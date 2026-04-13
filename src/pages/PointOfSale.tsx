@@ -14,7 +14,6 @@ export const PointOfSale = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // --- ESTADO NUEVO PARA MÓVILES ---
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
 
   const [metodoPago, setMetodoPago] = useState('Efectivo');
@@ -77,7 +76,7 @@ export const PointOfSale = () => {
       setCart([]);
       setNotas('');
       setMetodoPago('Efectivo');
-      setIsMobileCartOpen(false); // Cerramos el modal en móvil
+      setIsMobileCartOpen(false); 
     }
   };
 
@@ -85,7 +84,6 @@ export const PointOfSale = () => {
     return cart.reduce((total, item) => total + (item.product.precioVenta * item.cantidad), 0);
   };
 
-  // Calcula el total de artículos para la burbuja notificadora
   const totalItems = cart.reduce((sum, item) => sum + item.cantidad, 0);
 
   const handleCheckout = async () => {
@@ -112,7 +110,7 @@ export const PointOfSale = () => {
       setCart([]);
       setNotas('');
       setMetodoPago('Efectivo');
-      setIsMobileCartOpen(false); // Cerramos el ticket en móvil automáticamente al vender
+      setIsMobileCartOpen(false); 
     } catch (err: any) {
       alert('Error al registrar la venta: ' + (err.response?.data?.message || 'Error de conexión'));
     } finally {
@@ -153,7 +151,6 @@ export const PointOfSale = () => {
           {/* ==========================================
               LADO IZQUIERDO: CATÁLOGO
               ========================================== */}
-          {/* pb-24 en móvil da espacio para que la barra flotante no tape los últimos productos */}
           <div className="lg:col-span-2 flex flex-col h-[calc(100vh-120px)] pb-24 lg:pb-0">
             <div className="bg-white p-3 sm:p-4 rounded-t-xl shadow-sm border-b border-gray-100 z-10">
               <div className="relative">
@@ -216,7 +213,6 @@ export const PointOfSale = () => {
                     );
                   })}
                   
-                  {/* Failsafe Sin Categoría */}
                   {productsByCategory[''] && productsByCategory[''].length > 0 && (
                      <div className="animate-fade-in">
                         <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 sticky top-0 bg-white/90 backdrop-blur-sm py-2 z-10 border-b border-gray-100">
@@ -242,7 +238,7 @@ export const PointOfSale = () => {
           {/* ==========================================
               BARRA FLOTANTE MÓVIL (Solo visible en pantallas pequeñas)
               ========================================== */}
-          <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.1)] z-40 flex justify-between items-center pb-safe">
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.1)] z-30 flex justify-between items-center pb-safe">
             <div>
               <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Total a cobrar</p>
               <p className="text-xl font-black text-blue-600 leading-none">${calculateTotal().toFixed(2)}</p>
@@ -262,52 +258,51 @@ export const PointOfSale = () => {
           </div>
 
           {/* ==========================================
-              LADO DERECHO / MODAL MÓVIL: TICKET (CARRITO)
+              MODAL TICKET (CARRITO) - OPTIMIZADO MÓVIL
               ========================================== */}
           <div className={`
-            bg-white flex flex-col transition-all duration-300
+            bg-white flex flex-col transition-all duration-300 overflow-hidden
             ${isMobileCartOpen ? 'fixed inset-0 z-50 h-[100dvh]' : 'hidden lg:flex rounded-xl shadow-sm border border-gray-100 h-[calc(100vh-120px)]'}
           `}>
             
             {/* Cabecera del Ticket */}
-            <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-              <h2 className="font-bold text-gray-800 text-lg">Ticket Actual</h2>
-              <div className="flex items-center gap-4">
-                <button onClick={clearCart} className="text-red-500 hover:text-red-700 text-sm font-semibold px-2 py-1 rounded-lg hover:bg-red-50">
+            <div className="p-3 sm:p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center shrink-0">
+              <h2 className="font-bold text-gray-800 text-base sm:text-lg">Ticket Actual</h2>
+              <div className="flex items-center gap-2 sm:gap-4">
+                <button onClick={clearCart} className="text-red-500 hover:text-red-700 text-xs sm:text-sm font-semibold px-2 py-1 rounded-lg hover:bg-red-50">
                   Vaciar
                 </button>
-                {/* Botón Cerrar (Solo Móvil) */}
-                <button onClick={() => setIsMobileCartOpen(false)} className="lg:hidden bg-gray-200 text-gray-600 p-2 rounded-xl hover:bg-gray-300">
+                <button onClick={() => setIsMobileCartOpen(false)} className="lg:hidden bg-gray-200 text-gray-600 p-1.5 rounded-lg hover:bg-gray-300">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
             </div>
 
             {/* Lista de Items */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2 sm:space-y-3">
               {cart.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                  <svg className="w-16 h-16 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                  <p>Agrega productos al ticket</p>
+                  <svg className="w-12 h-12 sm:w-16 sm:h-16 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                  <p className="text-sm">Agrega productos al ticket</p>
                 </div>
               ) : (
                 cart.map(item => (
-                  <div key={item.product.id} className="flex justify-between items-center border-b border-gray-50 pb-3">
-                    <div className="flex-1 pr-2">
-                      <p className="text-sm font-bold text-gray-800 line-clamp-1">{item.product.nombre}</p>
-                      <p className="text-xs text-gray-500">${item.product.precioVenta.toFixed(2)} c/u</p>
+                  <div key={item.product.id} className="flex justify-between items-center border-b border-gray-50 pb-2">
+                    <div className="flex-1 pr-2 min-w-0">
+                      <p className="text-xs sm:text-sm font-bold text-gray-800 truncate">{item.product.nombre}</p>
+                      <p className="text-[10px] sm:text-xs text-gray-500">${item.product.precioVenta.toFixed(2)} c/u</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                       <div className="flex items-center bg-gray-100 rounded-lg">
-                        <button onClick={() => updateQuantity(item.product.id, -1)} className="px-2 py-1.5 text-gray-600 hover:bg-gray-200 rounded-l-lg font-bold">-</button>
-                        <span className="px-2 text-sm font-bold w-6 text-center">{item.cantidad}</span>
-                        <button onClick={() => updateQuantity(item.product.id, 1)} className="px-2 py-1.5 text-gray-600 hover:bg-gray-200 rounded-r-lg font-bold">+</button>
+                        <button onClick={() => updateQuantity(item.product.id, -1)} className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-l-lg font-bold">-</button>
+                        <span className="w-5 sm:w-6 text-xs sm:text-sm font-bold text-center">{item.cantidad}</span>
+                        <button onClick={() => updateQuantity(item.product.id, 1)} className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200 rounded-r-lg font-bold">+</button>
                       </div>
-                      <div className="text-right w-16">
-                        <p className="text-sm font-black text-gray-800">${(item.product.precioVenta * item.cantidad).toFixed(2)}</p>
+                      <div className="text-right w-14 sm:w-16">
+                        <p className="text-xs sm:text-sm font-black text-gray-800">${(item.product.precioVenta * item.cantidad).toFixed(2)}</p>
                       </div>
-                      <button onClick={() => removeFromCart(item.product.id)} className="text-red-400 hover:text-red-600 p-1.5">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                      <button onClick={() => removeFromCart(item.product.id)} className="text-red-400 hover:text-red-600 p-1">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                       </button>
                     </div>
                   </div>
@@ -315,46 +310,55 @@ export const PointOfSale = () => {
               )}
             </div>
 
-            {/* Zona de Checkout Inferior */}
-            <div className="p-4 bg-gray-50/80 border-t border-gray-200 pb-safe">
+            {/* Zona de Checkout Inferior Compacta */}
+            <div className="p-3 sm:p-4 bg-white border-t border-gray-200 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] shrink-0 pb-safe">
+              
+              {/* Botones de Pago Rápido */}
               <div className="mb-3">
-                <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1">Método de Pago</label>
-                <select 
-                  value={metodoPago} 
-                  onChange={(e) => setMetodoPago(e.target.value)}
-                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-semibold"
-                >
-                  <option value="Efectivo">💵 Efectivo</option>
-                  <option value="Tarjeta">💳 Tarjeta de Crédito/Débito</option>
-                  <option value="Transferencia">🏦 Transferencia</option>
-                </select>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Método de Pago</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {['Efectivo', 'Tarjeta', 'Transferencia'].map(metodo => (
+                    <button
+                      key={metodo}
+                      onClick={() => setMetodoPago(metodo)}
+                      className={`py-1.5 px-1 text-[11px] sm:text-xs font-bold rounded-lg border transition-all ${
+                        metodoPago === metodo
+                          ? 'bg-blue-50 border-blue-600 text-blue-700'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {metodo === 'Efectivo' ? '💵 Efe.' : metodo === 'Tarjeta' ? '💳 Tarj.' : '🏦 Trans.'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="mb-4">
+              {/* Input Notas Compacto */}
+              <div className="mb-3">
                 <input 
                   type="text" 
-                  placeholder="Notas adicionales (opcional)..." 
+                  placeholder="Añadir nota (opcional)..." 
                   value={notas}
                   onChange={(e) => setNotas(e.target.value)}
-                  className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                  className="w-full p-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
                 />
               </div>
 
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-gray-600 font-bold uppercase tracking-wider">Total a Cobrar</span>
-                <span className="text-3xl font-black text-blue-600">${calculateTotal().toFixed(2)}</span>
+              <div className="flex justify-between items-end mb-3 sm:mb-4">
+                <span className="text-gray-600 font-bold uppercase tracking-wider text-[10px] sm:text-xs">Total</span>
+                <span className="text-2xl sm:text-3xl font-black text-blue-600 leading-none">${calculateTotal().toFixed(2)}</span>
               </div>
 
               <button 
                 onClick={handleCheckout}
                 disabled={cart.length === 0 || isSubmitting}
-                className={`w-full py-4 rounded-xl text-lg font-black text-white shadow-lg transition-all 
+                className={`w-full py-3 sm:py-4 rounded-xl text-base sm:text-lg font-black text-white shadow-lg transition-all 
                   ${cart.length === 0 || isSubmitting 
-                    ? 'bg-gray-400 cursor-not-allowed' 
+                    ? 'bg-gray-400 cursor-not-allowed shadow-none' 
                     : 'bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-blue-600/30'
                   }`}
               >
-                {isSubmitting ? 'Procesando Pago...' : 'Confirmar Venta'}
+                {isSubmitting ? 'Procesando...' : 'Cobrar'}
               </button>
             </div>
           </div>
