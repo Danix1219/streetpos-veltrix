@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import streetposApi from '../api/axiosConfig';
 import { AuthContext } from '../context/AuthContext';
 import type { Product } from '../types/product';

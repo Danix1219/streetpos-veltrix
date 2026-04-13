@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // 1. Definimos qué datos guardaremos de la sesión

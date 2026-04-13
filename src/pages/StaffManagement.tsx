@@ -4,8 +4,7 @@ import type { User } from '../types/user';
 
 export const StaffManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  // Eliminamos 'loading' y 'error' porque no se pintaban en la pantalla
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ESTADOS PARA UI/UX (Modales y Toasts)
@@ -35,13 +34,11 @@ export const StaffManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      setLoading(true);
       const response = await streetposApi.get('/Users');
       setUsers(response.data);
     } catch (err: any) {
-      setError('Error al cargar el personal');
-    } finally {
-      setLoading(false);
+      // En lugar de usar un estado de error inactivo, disparamos tu Toast rojo
+      showToast('Error al cargar el personal', 'error');
     }
   };
 
