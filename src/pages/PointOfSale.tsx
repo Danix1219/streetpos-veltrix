@@ -2,51 +2,57 @@ import { useState, useEffect, useContext } from 'react';
 import streetposApi from '../api/axiosConfig';
 import { AuthContext } from '../context/AuthContext';
 import type { Product } from '../types/product';
+import type { Category } from '../types/category'; // <-- Necesitamos importar Category
 import type { CartItem, SalePayload } from '../types/sale';
 
 export const PointOfSale = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]); // <-- Nuevo estado
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState(''); // <-- Nuevo estado para el buscador
 
-  // Estados para el Checkout
   const [metodoPago, setMetodoPago] = useState('Efectivo');
   const [notas, setNotas] = useState('');
 
-  // Obtenemos info del cajero (Opcional, útil si guardas el ID en el contexto)
   const { nombre } = useContext(AuthContext);
 
   useEffect(() => {
-    fetchProducts();
+    fetchData();
   }, []);
 
-  const fetchProducts = async () => {
+  // --- DESCARGA SIMULTÁNEA DE PRODUCTOS Y CATEGORÍAS ---
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await streetposApi.get('/Products');
-      setProducts(response.data);
+      const [productsRes, categoriesRes] = await Promise.all([
+        streetposApi.get('/Products'),
+        streetposApi.get('/Categories')
+      ]);
+      
+      setProducts(productsRes.data);
+      
+      // Ordenamos las categorías por el campo "orden" si existe
+      const sortedCategories = categoriesRes.data.sort((a: Category, b: Category) => (a.orden || 0) - (b.orden || 0));
+      setCategories(sortedCategories);
     } catch (err: any) {
-      setError('Error al cargar el catálogo de productos');
+      setError('Error al cargar el catálogo y las categorías');
     } finally {
       setLoading(false);
     }
   };
 
-  // --- LÓGICA DEL CARRITO ---
+  // --- LÓGICA DEL CARRITO (Se mantiene igual) ---
   const addToCart = (product: Product) => {
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.product.id === product.id);
       if (existingItem) {
-        // Si ya existe, sumamos 1 a la cantidad
         return prevCart.map(item => 
-          item.product.id === product.id 
-            ? { ...item, cantidad: item.cantidad + 1 } 
-            : item
+          item.product.id === product.id ? { ...item, cantidad: item.cantidad + 1 } : item
         );
       }
-      // Si no existe, lo agregamos con cantidad 1
       return [...prevCart, { product, cantidad: 1 }];
     });
   };
@@ -56,7 +62,6 @@ export const PointOfSale = () => {
       return prevCart.map(item => {
         if (item.product.id === productId) {
           const newQuantity = item.cantidad + delta;
-          // Evitamos que la cantidad sea menor a 1
           return { ...item, cantidad: newQuantity > 0 ? newQuantity : 1 };
         }
         return item;
@@ -89,10 +94,9 @@ export const PointOfSale = () => {
 
     setIsSubmitting(true);
     try {
-      // Preparamos el objeto tal cual lo pide Swagger
       const payload: SalePayload = {
-        // IMPORTANTE: Idealmente, este ID debe venir de tu AuthContext o token decodificado
-        userId: "3fa85f64-5717-4562-b3fc-2c963f66afa6", // ID temporal por defecto
+        // Asumiendo que el backend toma el ID del token, dejamos un string genérico si lo pide el JSON
+        userId: "3fa85f64-5717-4562-b3fc-2c963f66afa6", 
         metodoPago: metodoPago,
         notas: notas,
         items: cart.map(item => ({
@@ -104,7 +108,6 @@ export const PointOfSale = () => {
       await streetposApi.post('/Sales', payload);
       alert('¡Venta registrada con éxito!');
       
-      // Limpiamos el carrito tras vender
       setCart([]);
       setNotas('');
       setMetodoPago('Efectivo');
@@ -115,11 +118,23 @@ export const PointOfSale = () => {
     }
   };
 
+  // --- LÓGICA PARA AGRUPAR PRODUCTOS ---
+  // Filtramos primero por el buscador, luego agrupamos
+  const filteredProducts = products.filter(p => p.nombre.toLowerCase().includes(searchTerm.toLowerCase()));
+  
+  // Creamos un mapa de productos por categoría
+  const productsByCategory: { [key: string]: Product[] } = {};
+  filteredProducts.forEach(product => {
+    if (!productsByCategory[product.categoriaId]) {
+      productsByCategory[product.categoriaId] = [];
+    }
+    productsByCategory[product.categoriaId].push(product);
+  });
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
         
-        {/* Cabecera del POS */}
         <div className="flex justify-between items-end mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Terminal de Venta</h1>
@@ -137,36 +152,100 @@ export const PointOfSale = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* ==========================================
-              LADO IZQUIERDO: CATÁLOGO DE PRODUCTOS (2/3)
+              LADO IZQUIERDO: CATÁLOGO AGRUPADO
               ========================================== */}
           <div className="lg:col-span-2 flex flex-col h-[calc(100vh-140px)]">
-            <div className="bg-white p-4 rounded-t-xl shadow-sm border-b border-gray-100">
-              <input 
-                type="text" 
-                placeholder="Buscar producto por nombre..." 
-                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            <div className="bg-white p-4 rounded-t-xl shadow-sm border-b border-gray-100 z-10">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input 
+                  type="text" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar producto por nombre..." 
+                  className="w-full pl-10 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700"
+                />
+              </div>
             </div>
             
             <div className="bg-white p-6 rounded-b-xl shadow-sm flex-1 overflow-y-auto border border-t-0 border-gray-100">
               {loading ? (
-                <div className="flex justify-center py-10"><p className="text-gray-500">Cargando inventario...</p></div>
+                <div className="flex justify-center py-10"><p className="text-gray-500 font-bold">Cargando inventario...</p></div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="text-center py-10 text-gray-500 font-bold">No se encontraron productos.</div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {products.map(product => (
-                    <div 
-                      key={product.id} 
-                      onClick={() => addToCart(product)}
-                      className="border border-gray-200 rounded-xl p-4 cursor-pointer hover:border-blue-500 hover:shadow-md transition-all flex flex-col justify-between h-32 active:scale-95"
-                    >
-                      <h3 className="font-bold text-gray-800 text-sm leading-tight line-clamp-2">{product.nombre}</h3>
-                      <div className="mt-2 text-blue-600 font-black text-lg">
-                        ${product.precioVenta.toFixed(2)}
+                <div className="space-y-8">
+                  {/* Iteramos sobre las categorías ordenadas para dibujar los bloques */}
+                  {categories.map(category => {
+                    const categoryProducts = productsByCategory[category.id];
+                    // Si esta categoría no tiene productos (o no coinciden con la búsqueda), no la dibujamos
+                    if (!categoryProducts || categoryProducts.length === 0) return null;
+
+                    return (
+                      <div key={category.id} className="animate-fade-in">
+                        
+                        {/* Cabecera de la Categoría con su Color */}
+                        <div className="flex items-center gap-3 mb-4 sticky top-0 bg-white/90 backdrop-blur-sm py-2 z-10 border-b border-gray-100">
+                          <div 
+                            className="w-4 h-4 rounded-full shadow-sm"
+                            style={{ backgroundColor: category.colorHex || '#ccc' }}
+                          ></div>
+                          <h2 className="text-lg font-extrabold text-gray-800 uppercase tracking-wide">
+                            {category.nombre}
+                          </h2>
+                          <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                            {categoryProducts.length}
+                          </span>
+                        </div>
+
+                        {/* Grid de Productos de esta Categoría */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                          {categoryProducts.map(product => (
+                            <div 
+                              key={product.id} 
+                              onClick={() => addToCart(product)}
+                              className="group relative border border-gray-200 rounded-xl p-4 cursor-pointer hover:shadow-lg transition-all flex flex-col justify-between h-32 active:scale-95 bg-white overflow-hidden"
+                            >
+                              {/* Barra lateral de color muy sutil */}
+                              <div 
+                                className="absolute left-0 top-0 bottom-0 w-1 opacity-50 group-hover:opacity-100 transition-opacity"
+                                style={{ backgroundColor: category.colorHex || '#ccc' }}
+                              ></div>
+                              
+                              <h3 className="font-bold text-gray-800 text-sm leading-tight line-clamp-2 pl-2">
+                                {product.nombre}
+                              </h3>
+                              <div className="mt-2 text-blue-600 font-black text-lg pl-2">
+                                ${product.precioVenta.toFixed(2)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  {products.length === 0 && (
-                    <div className="col-span-full text-center py-10 text-gray-500">No hay productos disponibles.</div>
+                    );
+                  })}
+                  
+                  {/* Productos sin categoría asignada (Failsafe) */}
+                  {productsByCategory[''] && productsByCategory[''].length > 0 && (
+                     <div className="animate-fade-in">
+                        <div className="flex items-center gap-3 mb-4 sticky top-0 bg-white/90 backdrop-blur-sm py-2 z-10 border-b border-gray-100">
+                          <div className="w-4 h-4 rounded-full bg-gray-300 shadow-sm"></div>
+                          <h2 className="text-lg font-extrabold text-gray-800 uppercase tracking-wide">Sin Categoría</h2>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                          {productsByCategory[''].map(product => (
+                            <div key={product.id} onClick={() => addToCart(product)} className="group relative border border-gray-200 rounded-xl p-4 cursor-pointer hover:shadow-lg transition-all flex flex-col justify-between h-32 active:scale-95 bg-white overflow-hidden">
+                              <div className="absolute left-0 top-0 bottom-0 w-1 opacity-50 bg-gray-300"></div>
+                              <h3 className="font-bold text-gray-800 text-sm leading-tight line-clamp-2 pl-2">{product.nombre}</h3>
+                              <div className="mt-2 text-blue-600 font-black text-lg pl-2">${product.precioVenta.toFixed(2)}</div>
+                            </div>
+                          ))}
+                        </div>
+                     </div>
                   )}
                 </div>
               )}
@@ -174,7 +253,7 @@ export const PointOfSale = () => {
           </div>
 
           {/* ==========================================
-              LADO DERECHO: TICKET / CARRITO (1/3)
+              LADO DERECHO: TICKET / CARRITO (Se mantiene igual)
               ========================================== */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col h-[calc(100vh-140px)]">
             <div className="p-4 border-b border-gray-100 bg-gray-50/50 rounded-t-xl flex justify-between items-center">
@@ -184,7 +263,6 @@ export const PointOfSale = () => {
               </button>
             </div>
 
-            {/* Lista de Items */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {cart.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-gray-400">
@@ -199,13 +277,11 @@ export const PointOfSale = () => {
                       <p className="text-xs text-gray-500">${item.product.precioVenta.toFixed(2)} c/u</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {/* Controles de Cantidad */}
                       <div className="flex items-center bg-gray-100 rounded-lg">
                         <button onClick={() => updateQuantity(item.product.id, -1)} className="px-2 py-1 text-gray-600 hover:bg-gray-200 rounded-l-lg font-bold">-</button>
                         <span className="px-2 text-sm font-bold w-8 text-center">{item.cantidad}</span>
                         <button onClick={() => updateQuantity(item.product.id, 1)} className="px-2 py-1 text-gray-600 hover:bg-gray-200 rounded-r-lg font-bold">+</button>
                       </div>
-                      {/* Subtotal Item & Borrar */}
                       <div className="text-right w-16">
                         <p className="text-sm font-black text-gray-800">${(item.product.precioVenta * item.cantidad).toFixed(2)}</p>
                       </div>
@@ -218,9 +294,7 @@ export const PointOfSale = () => {
               )}
             </div>
 
-            {/* Zona de Checkout Inferior */}
             <div className="p-4 bg-gray-50/80 border-t border-gray-200 rounded-b-xl">
-              
               <div className="mb-3">
                 <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">Método de Pago</label>
                 <select 
