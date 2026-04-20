@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import { useEffect, useState, useContext, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import streetposApi from '../api/axiosConfig';
 import { AuthContext } from '../context/AuthContext'; 
