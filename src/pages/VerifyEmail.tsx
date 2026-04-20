@@ -1,7 +1,6 @@
-import { useEffect, useState, useContext, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import streetposApi from '../api/axiosConfig';
-import { AuthContext } from '../context/AuthContext'; 
 
 export const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
@@ -14,15 +13,17 @@ export const VerifyEmail = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   
-  const { logout } = useContext(AuthContext); 
   const hasAttempted = useRef(false);
 
   useEffect(() => {
     if (hasAttempted.current) return;
     hasAttempted.current = true;
 
-    // LIMPIEZA INICIAL: Cerramos cualquier sesión "basura" que haya quedado
-    logout();
+    // 🚨 ARREGLO: Limpieza silenciosa en vez de llamar a logout() 
+    // Así evitamos que el Router nos mande al Login de golpe.
+    localStorage.removeItem('token');
+    localStorage.removeItem('rol');
+    sessionStorage.clear();
 
     const verifyAccount = async () => {
       if (!token || !email) {
@@ -36,23 +37,22 @@ export const VerifyEmail = () => {
           params: { token, email }
         });
         
-        // 🎨 TRUCO UX: Forzamos que la animación de carga se vea al menos 2 segundos
-        // para dar una sensación de seguridad y procesamiento.
+        // 🎨 TRUCO UX: Forzamos que la animación de carga se vea 2.5 segundos
         setTimeout(() => {
           setSuccess(true);
           setLoading(false);
-        }, 2000);
+        }, 2500);
 
       } catch (err: any) {
         setTimeout(() => {
           setError(err.response?.data?.message || 'No se pudo verificar la cuenta. El enlace podría haber expirado.');
           setLoading(false);
-        }, 1500);
+        }, 2000);
       }
     };
 
     verifyAccount();
-  }, [token, email, logout]);
+  }, [token, email]);
 
   return (
     <div className="min-h-screen flex bg-white font-sans">
@@ -68,7 +68,7 @@ export const VerifyEmail = () => {
 
           {loading ? (
             // ==========================================
-            // LA FAMOSA ANIMACIÓN DE CARGA
+            // LA FAMOSA ANIMACIÓN DE CARGA (¡AHORA SÍ SE VERÁ!)
             // ==========================================
             <div className="p-8 flex flex-col items-center justify-center animate-fade-in">
               <div className="relative mb-6">
