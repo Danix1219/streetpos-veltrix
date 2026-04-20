@@ -35,11 +35,19 @@ export const VerifyEmail = () => {
         await streetposApi.get('/Auth/verify-email', {
           params: { token, email }
         });
-        setSuccess(true);
+        
+        // 🎨 TRUCO UX: Forzamos que la animación de carga se vea al menos 2 segundos
+        // para dar una sensación de seguridad y procesamiento.
+        setTimeout(() => {
+          setSuccess(true);
+          setLoading(false);
+        }, 2000);
+
       } catch (err: any) {
-        setError(err.response?.data?.message || 'No se pudo verificar la cuenta. El enlace podría haber expirado.');
-      } finally {
-        setLoading(false);
+        setTimeout(() => {
+          setError(err.response?.data?.message || 'No se pudo verificar la cuenta. El enlace podría haber expirado.');
+          setLoading(false);
+        }, 1500);
       }
     };
 
@@ -59,36 +67,44 @@ export const VerifyEmail = () => {
           </div>
 
           {loading ? (
+            // ==========================================
+            // LA FAMOSA ANIMACIÓN DE CARGA
+            // ==========================================
             <div className="p-8 flex flex-col items-center justify-center animate-fade-in">
-              <svg className="animate-spin h-12 w-12 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <p className="text-gray-600 font-bold text-lg">Procesando validación...</p>
-              <p className="text-sm text-gray-400 mt-1">Por favor no cierres esta ventana.</p>
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-blue-100 rounded-full blur-xl opacity-50 animate-pulse"></div>
+                <svg className="animate-spin h-14 w-14 text-blue-600 relative z-10" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+              <p className="text-gray-800 font-extrabold text-lg tracking-tight">Procesando validación...</p>
+              <p className="text-sm text-gray-400 mt-1.5 font-medium">Autenticando credenciales para <span className="text-blue-600">{email}</span></p>
             </div>
           ) : success ? (
-            <div className="p-8 bg-emerald-50 rounded-xl border border-emerald-100 text-center animate-fade-in">
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            // PANTALLA DE ÉXITO VERDE
+            <div className="p-8 bg-emerald-50 rounded-2xl border border-emerald-100 text-center animate-scale-up">
+              <div className="w-16 h-16 bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-5 animate-bounce-short">
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
               </div>
-              <h3 className="text-lg font-bold text-emerald-800 mb-2">¡Cuenta Verificada!</h3>
-              <p className="text-sm text-emerald-600 mb-6">Tu correo <strong>{email}</strong> ha sido confirmado con éxito. Ya puedes acceder a todas las funciones del sistema.</p>
+              <h3 className="text-xl font-black text-emerald-900 mb-2 tracking-tight">¡Cuenta Verificada!</h3>
+              <p className="text-sm text-emerald-700 mb-8 font-medium">Tu correo ha sido confirmado con éxito. Ya puedes acceder a todas las funciones del sistema.</p>
               <button 
                 onClick={() => navigate('/login')}
-                className="w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-colors"
+                className="w-full py-3.5 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
               >
                 Ir a Iniciar Sesión
               </button>
             </div>
           ) : (
-            <div className="p-8 bg-rose-50 rounded-xl border border-rose-100 text-center animate-fade-in">
-              <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            // PANTALLA DE ERROR ROJA
+            <div className="p-8 bg-rose-50 rounded-2xl border border-rose-100 text-center animate-scale-up">
+              <div className="w-16 h-16 bg-rose-500 text-white shadow-lg shadow-rose-500/30 rounded-full flex items-center justify-center mx-auto mb-5">
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
               </div>
-              <h3 className="text-lg font-bold text-rose-800 mb-2">Verificación fallida</h3>
-              <p className="text-sm text-rose-600 mb-6">{error}</p>
-              <Link to="/login" className="w-full inline-block py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors">
+              <h3 className="text-xl font-black text-rose-900 mb-2 tracking-tight">Verificación fallida</h3>
+              <p className="text-sm text-rose-700 mb-8 font-medium">{error}</p>
+              <Link to="/login" className="w-full inline-block py-3.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 shadow-sm transition-all active:scale-95">
                 Volver al inicio
               </Link>
             </div>
@@ -96,7 +112,7 @@ export const VerifyEmail = () => {
         </div>
       </div>
 
-      {/* --- LADO DERECHO --- */}
+      {/* --- LADO DERECHO: Banner Branding --- */}
       <div className="hidden lg:block relative w-0 flex-1 bg-gray-900">
         <div className="absolute inset-0 h-full w-full bg-blue-600 flex items-center justify-center overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full opacity-20" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1.5px, transparent 1.5px)', backgroundSize: '24px 24px' }}></div>

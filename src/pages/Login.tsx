@@ -43,8 +43,7 @@ export const Login = () => {
       }
       
     } catch (err: any) {
-      // AQUÍ ESTÁ EL ARREGLO: Priorizamos el mensaje exacto que envía C#
-      // Si el C# mandó "Esta empresa ha sido suspendida", lo mostrará tal cual.
+
       const backendMessage = err.response?.data?.message;
       if (backendMessage) {
         setError(backendMessage);
