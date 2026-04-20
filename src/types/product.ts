@@ -4,4 +4,6 @@ export interface Product {
   precioCompra: number;
   precioVenta: number;
   categoriaId: string;
+  stockActual: number;
+  stockMinimo: number;
 }

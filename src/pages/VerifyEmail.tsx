@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import streetposApi from '../api/axiosConfig';
+import { AuthContext } from '../context/AuthContext'; 
 
 export const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
@@ -13,12 +14,15 @@ export const VerifyEmail = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   
-  // useRef para evitar que el useEffect se dispare dos veces en modo desarrollo (React Strict Mode)
+  const { logout } = useContext(AuthContext); 
   const hasAttempted = useRef(false);
 
   useEffect(() => {
     if (hasAttempted.current) return;
     hasAttempted.current = true;
+
+    // LIMPIEZA INICIAL: Cerramos cualquier sesión "basura" que haya quedado
+    logout();
 
     const verifyAccount = async () => {
       if (!token || !email) {
@@ -28,7 +32,6 @@ export const VerifyEmail = () => {
       }
 
       try {
-        // En tu Swagger aparece como un GET
         await streetposApi.get('/Auth/verify-email', {
           params: { token, email }
         });
@@ -41,12 +44,12 @@ export const VerifyEmail = () => {
     };
 
     verifyAccount();
-  }, [token, email]);
+  }, [token, email, logout]);
 
   return (
     <div className="min-h-screen flex bg-white font-sans">
       
-      {/* --- LADO IZQUIERDO: Estado de la Verificación --- */}
+      {/* --- LADO IZQUIERDO --- */}
       <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:w-1/2 xl:w-5/12 2xl:w-1/3 lg:px-20 xl:px-24 relative overflow-hidden">
         <div className="mx-auto w-full max-w-sm lg:w-96 text-center">
           
@@ -90,18 +93,17 @@ export const VerifyEmail = () => {
               </Link>
             </div>
           )}
-
         </div>
       </div>
 
-      {/* --- LADO DERECHO: Banner Branding --- */}
+      {/* --- LADO DERECHO --- */}
       <div className="hidden lg:block relative w-0 flex-1 bg-gray-900">
         <div className="absolute inset-0 h-full w-full bg-blue-600 flex items-center justify-center overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full opacity-20" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1.5px, transparent 1.5px)', backgroundSize: '24px 24px' }}></div>
           <div className="relative z-10 p-12 text-center max-w-2xl">
              <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 rounded-3xl backdrop-blur-md border border-white/20 shadow-2xl mb-8">
                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                </svg>
              </div>
              <h2 className="text-4xl font-black text-white tracking-tight mb-4">Un entorno de trabajo confiable.</h2>

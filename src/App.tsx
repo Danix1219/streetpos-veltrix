@@ -11,110 +11,87 @@ import { TenantManagement } from './pages/TenantManagement';
 import { PointOfSale } from './pages/PointOfSale';
 import { ResetPassword } from './pages/ResetPassword';
 import { VerifyEmail } from './pages/VerifyEmail';
+import { ReportsManagement } from './pages/ReportsManagement';
 
-// Componente Layout (El Menú Lateral)
+// Componente Layout
 import { Layout } from './components/Layout';
 
-// 1. Guardián de Rutas Estricto (Verifica Token y Rol)
+// 1. Guardián de Rutas
 const ProtectedRoute = ({ children, allowedRoles }: { children: ReactNode, allowedRoles?: string[] }) => {
   const { token, rol } = useContext(AuthContext);
 
-  // Si no hay token, patada inmediata al Login
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Si la ruta exige roles específicos y el usuario no lo tiene, patada al inicio
-  if (allowedRoles && rol && !allowedRoles.includes(rol)) {
-    return <Navigate to="/" replace />;
-  }
+  if (!token) return <Navigate to="/login" replace />;
+  if (allowedRoles && rol && !allowedRoles.includes(rol)) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 };
 
-// 2. Controlador de Tráfico (Redirige al hacer Login)
-const RootRedirect = () => {
+// 2. Mapeo de Rutas
+const AppRoutes = () => {
   const { token, rol } = useContext(AuthContext);
 
-  if (!token) return <Navigate to="/login" replace />;
-
-  // Redirección Automática según el Rol
-  if (rol === 'SuperAdmin') return <Navigate to="/admin/tenants" replace />;
-  if (rol === 'Admin') return <Navigate to="/admin/staff" replace />;
-  if (rol === 'Cajero') return <Navigate to="/pos" replace />;
-
-  // Failsafe por si algo sale mal
-  return <Navigate to="/login" replace />;
-};
-
-// 3. Mapeo de Rutas
-const AppRoutes = () => {
-  const { token } = useContext(AuthContext);
+  // Determinamos a dónde debería ir un usuario logueado
+  let redirectPath = '/login';
+  if (token) {
+      if (rol === 'SuperAdmin') redirectPath = '/admin/tenants';
+      else if (rol === 'Admin') redirectPath = '/admin/reports';
+      else if (rol === 'Cajero') redirectPath = '/pos';
+  }
 
   return (
     <Routes>
-      {/* La raíz '/' es la que decide a dónde mandarte */}
-      <Route path="/" element={<RootRedirect />} />
+      {/* LA RAÍZ: Si tiene token, lo manda a su panel. Si no, lo manda a /login.
+      */}
+      <Route path="/" element={<Navigate to={token ? redirectPath : "/login"} replace />} />
 
-      {/* Si el usuario ya está logueado e intenta ir a /login, lo regresamos a su panel */}
-      <Route path="/login" element={token ? <Navigate to="/" replace /> : <Login />} />
+      {/* LOGIN: Si ya tiene token, NO DEBE ESTAR AQUÍ, lo mandamos a su panel. 
+        Si no tiene token, se renderiza <Login /> (SIN NINGÚN REDIRECT)
+      */}
+      <Route path="/login" element={token ? <Navigate to={redirectPath} replace /> : <Login />} />
 
-      {/* RUTA: Recuperación de contraseña (Accesible sin token) */}
+      {/* RUTAS PÚBLICAS */}
       <Route path="/reset-password" element={token ? <Navigate to="/" replace /> : <ResetPassword />} />
-      {/* RUTA: Verificación de correo (Accesible sin token) */}
       <Route path="/verify-email" element={<VerifyEmail />} />
 
       {/* =======================================
-          RUTAS DE CAJEROS (Y superiores)
+          RUTAS PROTEGIDAS
           ======================================= */}
       <Route path="/pos" element={
-        <ProtectedRoute allowedRoles={['Cajero', 'Admin', 'SuperAdmin']}>
-          {/* Aquí envolvemos la página con el Layout */}
-          <Layout>
-            <PointOfSale />
-          </Layout>
+        <ProtectedRoute allowedRoles={['Cajero', 'Admin']}>
+          <Layout><PointOfSale /></Layout>
         </ProtectedRoute>
       } />
 
-      {/* =======================================
-          RUTAS DE ADMINS (Y superiores)
-          ======================================= */}
       <Route path="/admin/staff" element={
-        <ProtectedRoute allowedRoles={['Admin', 'SuperAdmin']}>
-          <Layout>
-            <StaffManagement />
-          </Layout>
+        <ProtectedRoute allowedRoles={['Admin']}>
+          <Layout><StaffManagement /></Layout>
         </ProtectedRoute>
       } />
 
       <Route path="/admin/categories" element={
-        <ProtectedRoute allowedRoles={['Admin', 'SuperAdmin']}>
-          <Layout>
-            <CategoryManagement />
-          </Layout>
+        <ProtectedRoute allowedRoles={['Admin']}>
+          <Layout><CategoryManagement /></Layout>
         </ProtectedRoute>
       } />
 
       <Route path="/admin/products" element={
-        <ProtectedRoute allowedRoles={['Admin', 'SuperAdmin']}>
-          <Layout>
-            <ProductManagement />
-          </Layout>
+        <ProtectedRoute allowedRoles={['Admin']}>
+          <Layout><ProductManagement /></Layout>
         </ProtectedRoute>
       } />
 
-      {/* =======================================
-          RUTAS EXCLUSIVAS DEL DUEÑO DEL SAAS
-          ======================================= */}
+      <Route path="/admin/reports" element={
+        <ProtectedRoute allowedRoles={['Admin']}>
+          <Layout><ReportsManagement /></Layout>
+        </ProtectedRoute>
+      } />
+
       <Route path="/admin/tenants" element={
         <ProtectedRoute allowedRoles={['SuperAdmin']}>
-          <Layout>
-            <TenantManagement />
-          </Layout>
+          <Layout><TenantManagement /></Layout>
         </ProtectedRoute>
       } />
 
-      {/* Si el usuario escribe una URL que no existe, lo mandamos al clasificador */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
