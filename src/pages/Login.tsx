@@ -130,17 +130,15 @@ export const Login = () => {
   return (
     <div className="min-h-screen flex bg-white font-sans relative">
       
-      {/* Sombra divisoria (Degradado sutil entre el panel blanco y el azul) */}
+      {/* Sombra divisoria */}
       <div className="absolute left-1/2 xl:left-5/12 2xl:left-1/3 top-0 bottom-0 w-24 bg-gradient-to-r from-transparent to-black/5 z-20 pointer-events-none hidden lg:block -translate-x-full"></div>
 
       {/* --- LADO IZQUIERDO: Formulario --- */}
-      <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:w-1/2 xl:w-5/12 2xl:w-1/3 lg:px-20 xl:px-24 relative z-30 bg-white">
+      <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:flex-none lg:w-1/2 xl:w-5/12 2xl:w-1/3 lg:px-20 xl:px-24 relative z-30 bg-white shadow-[10px_0_30px_rgba(0,0,0,0.05)]">
         <div className={`mx-auto w-full max-w-sm lg:w-96 relative transition-all duration-1000 transform ${isMounted ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'}`}>
           
-          {/* Logo y Encabezado */}
           <div className="transition-all duration-500">
-            
-            {/* Logo de la empresa como "App Badge" Premium */}
+            {/* App Badge Logo */}
             <div className="mb-8 inline-block">
               <div className="w-16 h-16 bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 flex items-center justify-center p-3 hover:scale-105 transition-transform duration-500 cursor-default">
                 <img 
@@ -151,7 +149,7 @@ export const Login = () => {
               </div>
             </div>
 
-            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight mt-4">
               {view === 'login' ? 'Bienvenido de nuevo' : view === 'forgot' ? 'Recuperar acceso' : 'Seguridad de Cuenta'}
             </h2>
             <p className="mt-2 text-sm text-gray-500 font-medium">
@@ -162,7 +160,6 @@ export const Login = () => {
           </div>
 
           <div className="mt-8">
-            {/* Mensajes de Error y Éxito */}
             {error && (
               <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-100 flex items-start animate-fade-in">
                 <svg className="w-5 h-5 text-rose-500 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -177,7 +174,6 @@ export const Login = () => {
               </div>
             )}
 
-            {/* VISTA 1: FORMULARIO DE LOGIN */}
             {view === 'login' && (
               <form onSubmit={handleLogin} className="space-y-6 animate-fade-in" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
                 <div>
@@ -215,7 +211,6 @@ export const Login = () => {
               </form>
             )}
 
-            {/* VISTA 2: FORMULARIO DE RECUPERAR CONTRASEÑA */}
             {view === 'forgot' && (
               <form onSubmit={handleForgotPassword} className="space-y-6 animate-fade-in">
                 <div>
@@ -233,7 +228,6 @@ export const Login = () => {
               </form>
             )}
 
-            {/* VISTA 3: FORZAR CAMBIO DE CONTRASEÑA (NUEVO) */}
             {view === 'force-change' && (
               <form onSubmit={handleForceChangePassword} className="space-y-6 animate-fade-in">
                 <div>
@@ -274,33 +268,93 @@ export const Login = () => {
         </div>
       </div>
 
-      {/* --- LADO DERECHO: Banner Branding --- */}
-      <div className="hidden lg:block relative w-0 flex-1 bg-gray-900 z-10 overflow-hidden">
-        {/* Capa base azul profundo */}
-        <div className="absolute inset-0 h-full w-full bg-[#1e40af] flex items-center justify-center">
-          
-          {/* Patrón de puntos animado */}
-          <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[radial-gradient(circle,#ffffff_1.5px,transparent_1.5px)] bg-[length:24px_24px] animate-[pulse_8s_ease-in-out_infinite]"></div>
-          
-          {/* Brillo espectacular detrás del icono */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-400/30 rounded-full blur-[100px] pointer-events-none"></div>
+      {/* --- LADO DERECHO: Banner Branding con Rusty --- */}
+      <div className="hidden lg:block relative w-0 flex-1 z-10 overflow-hidden bg-blue-900">
+        
+        {/* Efectos de fondo Aurora */}
+        <div className="absolute inset-0 w-full h-full">
+          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-70 animate-[blob_7s_infinite]"></div>
+          <div className="absolute top-[20%] right-[-10%] w-[50%] h-[50%] bg-indigo-500 rounded-full mix-blend-multiply filter blur-[100px] opacity-60 animate-[blob_7s_infinite_2s]"></div>
+          <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] bg-blue-800 rounded-full mix-blend-multiply filter blur-[120px] opacity-80 animate-[blob_7s_infinite_4s]"></div>
+        </div>
 
-          <div className={`relative z-20 p-12 text-center max-w-2xl transition-all duration-1000 transform delay-300 ${isMounted ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0'}`}>
-             
-             {/* Ícono central flotante */}
-             <div className="inline-flex items-center justify-center w-24 h-24 bg-white/10 rounded-[2rem] backdrop-blur-xl border border-white/20 shadow-2xl mb-10 hover:rotate-6 transition-transform duration-500 cursor-default">
-               <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+        {/* Contenedor Principal (Flex Row para alinear Texto Izquierda y Mascota Derecha) */}
+        <div className="absolute inset-0 flex items-center justify-center p-16">
+          <div className="w-full max-w-6xl flex flex-row items-center justify-between gap-16">
+              
+             {/* Textos - Alineados a la izquierda */}
+             <div className={`flex-1 text-left transition-all duration-1000 transform delay-300 ${isMounted ? 'translate-x-0 opacity-100' : '-translate-x-12 opacity-0'}`}>
+                 <h1 className="text-[4rem] xl:text-[6rem] font-black text-white tracking-tighter mb-8 leading-none drop-shadow-xl">
+                     StreetPOS
+                 </h1>
+                 <p className="text-2xl text-blue-100 font-medium leading-relaxed max-w-xl">
+                     Acelera tus ventas, controla tu inventario y domina el crecimiento de tu negocio en tiempo real.
+                 </p>
+                 
+                 {/* Insignias de confianza corporativas (Opcional, pero da mucho valor) */}
+                 <div className="mt-12 flex gap-6 items-center">
+                    <div className="flex flex-col gap-1 border-l-2 border-blue-400/30 pl-4">
+                        <span className="text-3xl font-black text-white">99.9%</span>
+                        <span className="text-xs font-bold text-blue-200 uppercase tracking-widest">Uptime Garantizado</span>
+                    </div>
+                    <div className="flex flex-col gap-1 border-l-2 border-blue-400/30 pl-4">
+                        <span className="text-3xl font-black text-white">24/7</span>
+                        <span className="text-xs font-bold text-blue-200 uppercase tracking-widest">Sincronización</span>
+                    </div>
+                 </div>
              </div>
 
-             <h2 className="text-[2.75rem] font-black text-white tracking-tight mb-6 leading-tight drop-shadow-sm">
-               Gestión empresarial<br/>a otro nivel.
-             </h2>
-             <p className="text-xl text-blue-100/90 font-medium leading-relaxed max-w-lg mx-auto">
-               Administra inventario, ventas y sucursales en tiempo real con una interfaz diseñada para la velocidad.
-             </p>
+            {/* Contenedor de la Mascota - A la derecha */}
+            <div className="flex-1 flex justify-end items-center relative animate-fade-in-up delay-1000">
+                <div className="relative group animate-float flex flex-col items-center">
+                     
+                     {/* Etiqueta de Estado Moderno (Reemplaza el globo de cómic) */}
+                    <div className="absolute -top-10 -left-12 xl:-left-20 group-hover:scale-105 transition-transform duration-500 bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-4 z-20">
+                        <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shrink-0">
+                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                        </div>
+                        <div>
+                            <p className="text-white font-bold text-sm leading-tight">Sistema Operativo</p>
+                            <p className="text-blue-200 text-xs font-medium">Listo para procesar cobros</p>
+                        </div>
+                    </div>
+                     
+                     {/* Imagen de Rusty (PNG transparente) */}
+                    <img 
+                        src="/Rusty.png" 
+                        alt="Rusty, the StreetPOS mascot" 
+                        className="w-[320px] xl:w-[400px] h-auto object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] group-hover:scale-105 transition-transform duration-500 delay-100" 
+                    />
+                </div>
+            </div>
+
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        @keyframes float {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-15px); }
+          100% { transform: translateY(0px); }
+        }
+        @keyframes fade-in-up {
+          0% { opacity: 0; transform: translateY(30px); }
+          100% { opacity: 1; transform: translateY(0px); }
+        }
+        .animate-float {
+          animation: float 5s ease-in-out infinite;
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+      `}</style>
 
     </div>
   );
