@@ -321,7 +321,7 @@ export const Login = () => {
                      
                      {/* Imagen de Rusty (PNG transparente) */}
                     <img 
-                        src="/Rusty.png" 
+                        src="/public/Rusty.png" 
                         alt="Rusty, the StreetPOS mascot" 
                         className="w-[320px] xl:w-[400px] h-auto object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] group-hover:scale-105 transition-transform duration-500 delay-100" 
                     />
