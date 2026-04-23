@@ -44,7 +44,7 @@ export const Login = () => {
 
     try {
       // Nota: Puedes enviar captchaToken al backend si tu API lo requiere para validarlo
-      const response = await streetposApi.post('/Auth/login', { email, password, recaptchaToken: captchaToken });
+      const response = await streetposApi.post('/Auth/login', { email, password, captchaToken });
       
       // 1. Verificamos la bandera de seguridad
       if (response.data.requirePasswordChange === true) {
