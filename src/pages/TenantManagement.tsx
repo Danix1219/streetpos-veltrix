@@ -135,7 +135,6 @@ export const TenantManagement = () => {
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   return (
-    /* 🚨 ARREGLO: Se retiró 'overflow-hidden' del div principal para permitir scroll móvil 🚨 */
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen relative">
       
       {/* ==========================================
@@ -249,15 +248,23 @@ export const TenantManagement = () => {
               {/* Input: Password (Solo al Crear) */}
               {!editingId && (
                 <div className="pt-2 border-t border-gray-100">
-                  <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Contraseña Temporal</label>
+                  {/* 🚨 ETIQUETA Y CONTADOR 🚨 */}
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">Contraseña Temporal</label>
+                    <span className={`text-[10px] font-bold transition-colors ${formData.passwordInicial.length >= 64 ? 'text-rose-500' : 'text-gray-400'}`}>
+                      {formData.passwordInicial.length}/64
+                    </span>
+                  </div>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                       <svg className="h-5 w-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                     </div>
+                    {/* 🚨 MAXLENGTH AÑADIDO (64) 🚨 */}
                     <input 
                       type={showPassword ? "text" : "password"} 
                       name="passwordInicial" 
                       required 
+                      maxLength={64}
                       value={formData.passwordInicial} 
                       onChange={handleInputChange} 
                       className="w-full pl-11 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all font-mono tracking-wider" 
