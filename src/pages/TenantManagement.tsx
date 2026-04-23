@@ -135,7 +135,8 @@ export const TenantManagement = () => {
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen relative overflow-hidden">
+    /* 🚨 ARREGLO: Se retiró 'overflow-hidden' del div principal para permitir scroll móvil 🚨 */
+    <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen relative">
       
       {/* ==========================================
           COMPONENTES FLOTANTES (TOAST Y MODAL)
