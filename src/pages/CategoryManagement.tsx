@@ -118,7 +118,8 @@ export const CategoryManagement = () => {
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen relative overflow-hidden">
+    /* 🚨 ARREGLO: Se retiró 'overflow-hidden' del contenedor principal 🚨 */
+    <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen relative">
       
       {/* ==========================================
           COMPONENTES FLOTANTES (TOAST Y MODAL)
@@ -259,6 +260,7 @@ export const CategoryManagement = () => {
             
             {error && <p className="text-rose-500 font-bold p-4 bg-rose-50 m-4 rounded-xl text-sm">{error}</p>}
             
+            {/* 🚨 Esta sección conserva 'overflow-x-auto' para que SOLO la tabla se deslice hacia los lados */}
             <div className="flex-1 overflow-x-auto">
               {loading ? (
                 <div className="flex justify-center items-center py-20 text-gray-500 font-bold">Cargando catálogo...</div>

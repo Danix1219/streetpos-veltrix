@@ -93,7 +93,8 @@ export const StaffManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8 relative overflow-hidden">
+    /* 🚨 ARREGLO: Se quitó 'overflow-hidden' del div principal 🚨 */
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8 relative">
       
       {/* --- COMPONENTE TOAST (Notificación flotante) --- */}
       {toast && (
@@ -179,13 +180,13 @@ export const StaffManagement = () => {
         </div>
 
         {/* COLUMNA DERECHA: Tabla */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-lg font-bold text-gray-800">Equipo de Trabajo</h2>
             <span className="bg-blue-50 text-blue-700 py-1.5 px-4 rounded-full text-xs font-black uppercase tracking-wider">{users.length} Registrados</span>
           </div>
           
-          <div className="overflow-x-auto">
+          <div className="flex-1 overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-100">
               <thead className="bg-gray-50">
                 <tr>
