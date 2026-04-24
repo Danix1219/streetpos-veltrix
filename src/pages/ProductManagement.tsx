@@ -10,7 +10,6 @@ export const ProductManagement = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
@@ -145,10 +144,6 @@ export const ProductManagement = () => {
         };
         await db.products.put(localProductToSave);
         showToast('Guardado localmente. Se sincronizará al tener red.', 'info');
-        
-        // Pendiente: Deberíamos meter esto a una cola de sincronización si queremos
-        // que el backend también reciba los productos creados offline. 
-        // Por ahora, lo mantenemos en la UI para que el usuario no se trabe.
       }
       
       cancelEdit();
@@ -199,10 +194,6 @@ export const ProductManagement = () => {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen relative">
-      
-      {/* ==========================================
-          COMPONENTES FLOTANTES (TOAST Y MODAL)
-          ========================================== */}
       
       {/* TOAST NOTIFICATION */}
       {toast && (
@@ -262,9 +253,7 @@ export const ProductManagement = () => {
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           
-          {/* ==========================================
-              LADO IZQUIERDO: FORMULARIO
-              ========================================== */}
+          {/* LADO IZQUIERDO: FORMULARIO */}
           <div className={`bg-white p-6 rounded-2xl shadow-sm border transition-all duration-300 h-fit ${editingId ? 'border-blue-500 ring-4 ring-blue-50' : 'border-gray-200'}`}>
             <div className="flex items-center gap-3 mb-6">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black transition-colors ${editingId ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'}`}>
@@ -358,9 +347,7 @@ export const ProductManagement = () => {
             </form>
           </div>
 
-          {/* ==========================================
-              LADO DERECHO: TABLA Y PAGINACIÓN
-              ========================================== */}
+          {/* LADO DERECHO: TABLA Y PAGINACIÓN */}
           <div className="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
             <div className="p-5 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h2 className="text-lg font-bold text-gray-800">Catálogo Activo</h2>
@@ -368,8 +355,6 @@ export const ProductManagement = () => {
                 {products.length} Registros
               </span>
             </div>
-            
-            {error && <p className="text-rose-500 font-bold p-4 bg-rose-50 m-4 rounded-xl text-sm">{error}</p>}
             
             <div className="flex-1 overflow-x-auto">
               {loading ? (
@@ -439,9 +424,7 @@ export const ProductManagement = () => {
               )}
             </div>
 
-            {/* ==========================================
-                PAGINADOR EN EL PIE DE LA TABLA
-                ========================================== */}
+            {/* PAGINADOR */}
             {products.length > itemsPerPage && (
               <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
                 <p className="text-xs font-bold text-gray-500">
