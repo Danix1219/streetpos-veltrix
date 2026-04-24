@@ -5,6 +5,9 @@ import type { Product } from '../types/product';
 import type { Category } from '../types/category';
 import type { CartItem, SalePayload } from '../types/sale';
 
+// 🚨 1. IMPORTAMOS NUESTRA BASE DE DATOS LOCAL 🚨
+import { db } from '../db/db';
+
 export const PointOfSale = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -32,27 +35,41 @@ export const PointOfSale = () => {
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000); // Más rápido para el POS
+    setTimeout(() => setToast(null), 3000); 
   };
 
   useEffect(() => {
     fetchData();
   }, []);
 
+  // 🚨 2. MODIFICAMOS LA CARGA DE DATOS PARA LEER OFFLINE 🚨
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [productsRes, categoriesRes] = await Promise.all([
-        streetposApi.get('/Products'),
-        streetposApi.get('/Categories')
-      ]);
       
-      setProducts(productsRes.data);
-      const sortedCategories = categoriesRes.data.sort((a: Category, b: Category) => (a.orden || 0) - (b.orden || 0));
-      setCategories(sortedCategories);
+      // A. Cargar productos desde IndexedDB (Rápido y Offline)
+      const localProducts = await db.products.toArray();
+      setProducts(localProducts);
+
+      // B. Cargar categorías de la API, con respaldo en localStorage
+      try {
+        const catRes = await streetposApi.get('/Categories');
+        const sortedCategories = catRes.data.sort((a: Category, b: Category) => (a.orden || 0) - (b.orden || 0));
+        setCategories(sortedCategories);
+        // Guardamos copia de seguridad por si luego se va el internet
+        localStorage.setItem('streetpos_categories', JSON.stringify(sortedCategories));
+      } catch (apiErr) {
+        // Si falla (no hay internet), sacamos la copia de seguridad
+        const cachedCats = localStorage.getItem('streetpos_categories');
+        if (cachedCats) {
+          setCategories(JSON.parse(cachedCats));
+        } else {
+          showToast('Modo offline sin categorías previas', 'info');
+        }
+      }
+      
     } catch (err: any) {
-      setError('Error al cargar el catálogo y las categorías');
-      showToast('Error de conexión al cargar datos', 'error');
+      setError('Error al leer la base de datos local');
     } finally {
       setLoading(false);
     }
@@ -68,8 +85,6 @@ export const PointOfSale = () => {
       }
       return [...prevCart, { product, cantidad: 1 }];
     });
-    // Opcional: Feedback visual súper rápido (sin sonido)
-    // showToast(`${product.nombre} agregado`, 'info'); 
   };
 
   const updateQuantity = (productId: string, delta: number) => {
@@ -103,9 +118,26 @@ export const PointOfSale = () => {
 
   const totalItems = cart.reduce((sum, item) => sum + item.cantidad, 0);
 
+  // 🚨 3. FUNCIÓN AUXILIAR PARA GUARDAR LA VENTA LOCALMENTE 🚨
+  const saveSaleOffline = async (payload: SalePayload) => {
+    const offlineSale = {
+      localId: crypto.randomUUID(), // Genera un ID temporal único
+      sincronizado: 0,
+      fechaLocal: new Date(),
+      userId: payload.userId,
+      metodoPago: payload.metodoPago,
+      notas: payload.notas,
+      items: payload.items
+    };
+    
+    await db.offlineSales.add(offlineSale);
+    showToast('¡Venta guardada en modo local! Se sincronizará pronto.', 'info');
+  };
+
+  // 🚨 4. MODIFICAMOS EL CHECKOUT PARA SOPORTAR MODO OFFLINE 🚨
   const handleCheckout = async () => {
     setIsSubmitting(true);
-    setConfirmModal({ isOpen: false, action: 'checkout' }); // Cierra el modal antes de procesar
+    setConfirmModal({ isOpen: false, action: 'checkout' }); 
 
     try {
       const payload: SalePayload = {
@@ -118,15 +150,29 @@ export const PointOfSale = () => {
         }))
       };
 
-      await streetposApi.post('/Sales', payload);
-      showToast('¡Venta registrada con éxito!', 'success');
+      if (navigator.onLine) {
+        // Intenta enviarlo a la API real
+        try {
+          await streetposApi.post('/Sales', payload);
+          showToast('¡Venta registrada con éxito!', 'success');
+        } catch (apiError) {
+          // Si hay internet pero el backend falló, guardamos local
+          console.warn("Backend falló, guardando offline...");
+          await saveSaleOffline(payload);
+        }
+      } else {
+        // Si de plano no hay WiFi, guardamos local directo
+        await saveSaleOffline(payload);
+      }
       
+      // Limpiamos carrito sin importar si fue online u offline
       setCart([]);
       setNotas('');
       setMetodoPago('Efectivo');
       setIsMobileCartOpen(false); 
+
     } catch (err: any) {
-      showToast('Error al registrar la venta: ' + (err.response?.data?.message || 'Revisa tu conexión'), 'error');
+      showToast('Error crítico al procesar la venta', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -151,7 +197,7 @@ export const PointOfSale = () => {
       {/* TOAST NOTIFICATION */}
       {toast && (
         <div className={`fixed top-5 right-5 z-[60] flex items-center p-4 mb-4 text-white rounded-2xl shadow-2xl animate-fade-in 
-          ${toast.type === 'success' ? 'bg-emerald-500' : toast.type === 'error' ? 'bg-rose-500' : 'bg-gray-800'}`}>
+          ${toast.type === 'success' ? 'bg-emerald-500' : toast.type === 'error' ? 'bg-rose-500' : 'bg-blue-500'}`}>
           <div className="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg mr-3">
             {toast.type === 'success' ? (
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
@@ -216,9 +262,10 @@ export const PointOfSale = () => {
             <p className="text-xs sm:text-sm text-gray-500">Cajero en turno: <span className="font-semibold">{nombre || 'Usuario'}</span></p>
           </div>
           <div className="text-right">
-            <span className="bg-emerald-100 text-emerald-800 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-sm font-bold uppercase tracking-wider flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Caja Abierta
+            {/* Indicador de caja visual, ahora nos servirá también para ver si estamos offline */}
+            <span className={`px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-sm font-bold uppercase tracking-wider flex items-center gap-1 ${navigator.onLine ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+              <span className={`w-2 h-2 rounded-full animate-pulse ${navigator.onLine ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+              {navigator.onLine ? 'Caja Abierta' : 'Modo Offline'}
             </span>
           </div>
         </div>

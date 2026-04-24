@@ -3,6 +3,9 @@ import streetposApi from '../api/axiosConfig';
 import type { Product } from '../types/product';
 import type { Category } from '../types/category'; 
 
+// 🚨 IMPORTAMOS LA BASE DE DATOS LOCAL 🚨
+import { db } from '../db/db';
+
 export const ProductManagement = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -16,7 +19,7 @@ export const ProductManagement = () => {
   const itemsPerPage = 6; 
   
   // ESTADOS PARA UI/UX (Toasts y Modales)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; prodId: string; prodName: string }>({
     isOpen: false,
     prodId: '',
@@ -37,23 +40,51 @@ export const ProductManagement = () => {
     fetchInitialData();
   }, []);
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
 
+  // 🚨 LECTURA HÍBRIDA (API -> Fallback a IndexedDB) 🚨
   const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const [productsRes, categoriesRes] = await Promise.all([
-        streetposApi.get('/Products'),
-        streetposApi.get('/Categories')
-      ]);
       
-      setProducts(productsRes.data);
-      setCategories(categoriesRes.data);
+      // Intentamos cargar de la API primero
+      if (navigator.onLine) {
+        try {
+          const [productsRes, categoriesRes] = await Promise.all([
+            streetposApi.get('/Products'),
+            streetposApi.get('/Categories')
+          ]);
+          
+          setProducts(productsRes.data);
+          setCategories(categoriesRes.data);
+          
+          // Guardamos un respaldo de las categorías en localStorage por si acaso
+          localStorage.setItem('streetpos_categories', JSON.stringify(categoriesRes.data));
+          
+          // Actualizamos la BD local con los productos frescos
+          await db.products.bulkPut(productsRes.data);
+        } catch (apiError) {
+          throw new Error('Fallo API, pasando a modo local');
+        }
+      } else {
+        throw new Error('Sin conexión, pasando a modo local');
+      }
+
     } catch (err: any) {
-      setError('Error al cargar los datos del catálogo');
+      // MODO OFFLINE: Leemos de la base de datos local
+      console.log("Cargando catálogo en modo offline...");
+      const localProducts = await db.products.toArray();
+      setProducts(localProducts);
+      
+      const cachedCats = localStorage.getItem('streetpos_categories');
+      if (cachedCats) setCategories(JSON.parse(cachedCats));
+      
+      if (!navigator.onLine) {
+         showToast('Trabajando en modo sin conexión', 'info');
+      }
     } finally {
       setLoading(false);
     }
@@ -85,6 +116,7 @@ export const ProductManagement = () => {
     setFormData({ nombre: '', precioCompra: 0, precioVenta: 0, categoriaId: '', stockActual: 0, stockMinimo: 0 });
   };
 
+  // 🚨 GUARDADO/ACTUALIZACIÓN HÍBRIDA 🚨
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -94,17 +126,34 @@ export const ProductManagement = () => {
     }
 
     setIsSubmitting(true);
+    
     try {
-      if (editingId) {
-        await streetposApi.put(`/Products/${editingId}`, formData);
-        showToast('Producto actualizado con éxito');
+      if (navigator.onLine) {
+        // MODO ONLINE
+        if (editingId) {
+          await streetposApi.put(`/Products/${editingId}`, formData);
+          showToast('Producto actualizado con éxito');
+        } else {
+          await streetposApi.post('/Products', formData);
+          showToast('Producto registrado en el inventario');
+        }
       } else {
-        await streetposApi.post('/Products', formData);
-        showToast('Producto registrado en el inventario');
+        // MODO OFFLINE: Guardamos en IndexedDB
+        const localProductToSave = {
+          ...formData,
+          id: editingId || crypto.randomUUID() // Si es nuevo, generamos ID temporal
+        };
+        await db.products.put(localProductToSave);
+        showToast('Guardado localmente. Se sincronizará al tener red.', 'info');
+        
+        // Pendiente: Deberíamos meter esto a una cola de sincronización si queremos
+        // que el backend también reciba los productos creados offline. 
+        // Por ahora, lo mantenemos en la UI para que el usuario no se trabe.
       }
+      
       cancelEdit();
-      const response = await streetposApi.get('/Products');
-      setProducts(response.data);
+      await fetchInitialData(); // Recargamos la tabla (online u offline)
+      
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Fallo en la operación', 'error');
     } finally {
@@ -112,14 +161,20 @@ export const ProductManagement = () => {
     }
   };
 
+  // 🚨 ELIMINACIÓN HÍBRIDA 🚨
   const confirmDelete = async () => {
     try {
-      await streetposApi.delete(`/Products/${deleteModal.prodId}`);
-      showToast('Producto eliminado correctamente');
-      setDeleteModal({ isOpen: false, prodId: '', prodName: '' });
+      if (navigator.onLine) {
+        await streetposApi.delete(`/Products/${deleteModal.prodId}`);
+        showToast('Producto eliminado correctamente');
+      } else {
+        // Borrado local
+        await db.products.delete(deleteModal.prodId);
+        showToast('Producto eliminado localmente.', 'info');
+      }
       
-      const response = await streetposApi.get('/Products');
-      setProducts(response.data);
+      setDeleteModal({ isOpen: false, prodId: '', prodName: '' });
+      await fetchInitialData(); // Refresca la tabla
       
       if (currentProducts.length === 1 && currentPage > 1) {
         setCurrentPage(currentPage - 1);
@@ -143,7 +198,6 @@ export const ProductManagement = () => {
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   return (
-    /* 🚨 ARREGLO: Se retiró 'overflow-hidden' del contenedor principal para permitir el scroll vertical en móviles 🚨 */
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen relative">
       
       {/* ==========================================
@@ -152,12 +206,15 @@ export const ProductManagement = () => {
       
       {/* TOAST NOTIFICATION */}
       {toast && (
-        <div className={`fixed top-5 right-5 z-[60] flex items-center p-4 mb-4 text-white rounded-2xl shadow-2xl animate-fade-in ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+        <div className={`fixed top-5 right-5 z-[60] flex items-center p-4 mb-4 text-white rounded-2xl shadow-2xl animate-fade-in 
+          ${toast.type === 'success' ? 'bg-emerald-500' : toast.type === 'error' ? 'bg-rose-500' : 'bg-blue-500'}`}>
           <div className="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg mr-3">
             {toast.type === 'success' ? (
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
-            ) : (
+            ) : toast.type === 'error' ? (
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             )}
           </div>
           <div className="text-sm font-bold pr-2">{toast.message}</div>
@@ -188,10 +245,19 @@ export const ProductManagement = () => {
 
       <div className="max-w-7xl mx-auto">
         
-        {/* Cabecera */}
-        <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Inventario de Productos</h1>
-          <p className="mt-1 text-sm text-gray-500">Gestiona precios, categorías y niveles de stock de tu catálogo.</p>
+        {/* Cabecera y Status Offline */}
+        <div className="flex justify-between items-end mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Inventario de Productos</h1>
+            <p className="mt-1 text-sm text-gray-500">Gestiona precios, categorías y niveles de stock de tu catálogo.</p>
+          </div>
+          <div className="text-right">
+            {/* 🚨 INDICADOR VISUAL OFFLINE/ONLINE 🚨 */}
+            <span className={`px-2 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm border ${navigator.onLine ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+              <span className={`w-2 h-2 rounded-full animate-pulse ${navigator.onLine ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+              {navigator.onLine ? 'Conectado' : 'Modo Offline'}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -305,7 +371,6 @@ export const ProductManagement = () => {
             
             {error && <p className="text-rose-500 font-bold p-4 bg-rose-50 m-4 rounded-xl text-sm">{error}</p>}
             
-            {/* 🚨 La tabla conserva overflow-x-auto para deslizar hacia los lados en móviles sin romper el layout */}
             <div className="flex-1 overflow-x-auto">
               {loading ? (
                 <div className="flex justify-center items-center py-20 text-gray-500 font-bold">Cargando inventario...</div>

@@ -2,6 +2,9 @@ import React, { useContext, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
+// 🚨 1. IMPORTAMOS NUESTRO HOOK MAESTRO DE SINCRONIZACIÓN 🚨
+import { useSync } from '../hooks/useSync';
+
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -11,6 +14,9 @@ export const Layout = ({ children }: LayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // 🚨 2. DESPERTAMOS EL HOOK EN SEGUNDO PLANO Y EXTRAEMOS SUS ESTADOS 🚨
+  const { isSyncing, syncSuccess, pendingCount } = useSync();
 
   const handleLogout = () => {
     logout();
@@ -174,7 +180,33 @@ export const Layout = ({ children }: LayoutProps) => {
       {/* ==========================================
           CONTENIDO PRINCIPAL (Donde se renderizan las páginas)
           ========================================== */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-gray-50 h-screen overflow-y-auto">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-gray-50 h-screen overflow-y-auto relative">
+        
+        {/* 🚨 3. INDICADOR VISUAL DE SINCRONIZACIÓN GLOBAL 🚨 */}
+        {/* Solo se dibuja en pantalla si está sincronizando o si acaba de terminar con éxito */}
+        {(isSyncing || syncSuccess) && (
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] animate-fade-in">
+            {isSyncing ? (
+              // Cápsula Azul: Procesando...
+              <div className="bg-blue-600 text-white px-4 py-2.5 rounded-full shadow-xl flex items-center gap-3 font-bold text-sm">
+                <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Subiendo {pendingCount} venta{pendingCount > 1 ? 's' : ''} a la nube...
+              </div>
+            ) : syncSuccess ? (
+              // Cápsula Verde: Éxito
+              <div className="bg-emerald-500 text-white px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 font-bold text-sm animate-bounce-short">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                </svg>
+                ¡Ventas sincronizadas con éxito!
+              </div>
+            ) : null}
+          </div>
+        )}
+
         {/* Aquí se inyectan las páginas como CategoryManagement, PointOfSale, etc. */}
         {children}
       </main>
