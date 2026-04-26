@@ -4,8 +4,10 @@ import type { User } from '../types/user';
 
 export const StaffManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
-  // Eliminamos 'loading' y 'error' porque no se pintaban en la pantalla
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 🚨 NUEVO: ESTADO PARA EL BUSCADOR INTELIGENTE 🚨
+  const [searchTerm, setSearchTerm] = useState('');
 
   // ESTADOS PARA UI/UX (Modales y Toasts)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -38,7 +40,6 @@ export const StaffManagement = () => {
       const response = await streetposApi.get('/Users');
       setUsers(response.data);
     } catch (err: any) {
-      // En lugar de usar un estado de error inactivo, disparamos tu Toast rojo
       showToast('Error al cargar el personal', 'error');
     }
   };
@@ -94,8 +95,14 @@ export const StaffManagement = () => {
     }
   };
 
+  // 🚨 NUEVO: LÓGICA DE FILTRADO (BUSCADOR INTELIGENTE) 🚨
+  // Filtra buscando coincidencias en el nombre o en el correo electrónico
+  const filteredUsers = users.filter(user => 
+    user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    /* 🚨 ARREGLO: Se quitó 'overflow-hidden' del div principal 🚨 */
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8 relative">
       
       {/* --- COMPONENTE TOAST (Notificación flotante) --- */}
@@ -112,7 +119,7 @@ export const StaffManagement = () => {
         </div>
       )}
 
-      {/* --- MODAL DE ELIMINACIÓN (Confirmación Custom) --- */}
+      {/* --- MODAL DE ELIMINACIÓN --- */}
       {deleteModal.isOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden animate-scale-up">
@@ -133,8 +140,16 @@ export const StaffManagement = () => {
 
       {/* Encabezado del Panel */}
       <div className="max-w-7xl mx-auto mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Gestión de Personal</h1>
-        <p className="mt-2 text-sm text-gray-500">Administra los accesos y roles de tu equipo de trabajo.</p>
+        <div className="flex items-center gap-3">
+          {/* 🚨 ICONO AÑADIDO AQUÍ 🚨 */}
+          <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Gestión de Personal</h1>
+            <p className="mt-1 text-sm text-gray-500">Administra los accesos y roles de tu equipo de trabajo.</p>
+          </div>
+        </div>
       </div>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -148,25 +163,58 @@ export const StaffManagement = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            
+            {/* Nombre (CON MAXLENGTH Y CONTADOR) */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Nombre Completo</label>
-              <input type="text" name="nombre" required value={formData.nombre} onChange={handleInputChange} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="Juan Pérez" />
+              <div className="flex justify-between items-end mb-1">
+                <label className="block text-sm font-semibold text-gray-700">Nombre Completo</label>
+                {/* 🚨 INDICADOR VISUAL 🚨 */}
+                <span className={`text-[10px] font-bold ${formData.nombre.length >= 100 ? 'text-rose-500' : 'text-gray-400'}`}>
+                  {formData.nombre.length} / 100
+                </span>
+              </div>
+              <input 
+                type="text" 
+                name="nombre" 
+                required 
+                maxLength={100}
+                value={formData.nombre} 
+                onChange={handleInputChange} 
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                placeholder="Juan Pérez" 
+              />
             </div>
+            
+            {/* Email (CON MAXLENGTH Y CONTADOR) */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Correo Electrónico</label>
-              <input type="email" name="email" required value={formData.email} onChange={handleInputChange} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" placeholder="ejemplo@streetpos.com" />
+              <div className="flex justify-between items-end mb-1">
+                <label className="block text-sm font-semibold text-gray-700">Correo Electrónico</label>
+                {/* 🚨 INDICADOR VISUAL 🚨 */}
+                <span className={`text-[10px] font-bold ${formData.email.length >= 100 ? 'text-rose-500' : 'text-gray-400'}`}>
+                  {formData.email.length} / 100
+                </span>
+              </div>
+              <input 
+                type="email" 
+                name="email" 
+                required 
+                maxLength={100}
+                value={formData.email} 
+                onChange={handleInputChange} 
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                placeholder="ejemplo@streetpos.com" 
+              />
             </div>
+
+            {/* Contraseña */}
             {!editingId && (
               <div className="animate-fade-in">
-                {/* 🚨 ETIQUETA Y CONTADOR FUERA DEL INPUT 🚨 */}
-                <div className="flex justify-between items-center mb-1">
+                <div className="flex justify-between items-end mb-1">
                   <label className="block text-sm font-semibold text-gray-700">Contraseña</label>
                   <span className={`text-[10px] font-bold transition-colors ${formData.password.length >= 64 ? 'text-rose-500' : 'text-gray-400'}`}>
-                    {formData.password.length}/64
+                    {formData.password.length} / 64
                   </span>
                 </div>
-                
-                {/* 🚨 CONTENEDOR RELATIVE PARA EL INPUT Y EL BOTÓN 🚨 */}
                 <div className="relative">
                   <input 
                     type={showPassword ? "text" : "password"} 
@@ -178,7 +226,6 @@ export const StaffManagement = () => {
                     className="w-full px-4 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
                     placeholder="••••••••" 
                   />
-                  {/* Botón del ojito */}
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none transition-colors">
                     {showPassword ? (
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
@@ -189,6 +236,8 @@ export const StaffManagement = () => {
                 </div>
               </div>
             )}
+
+            {/* Rol */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Rol</label>
               <select name="rol" value={formData.rol} onChange={handleInputChange} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer">
@@ -210,49 +259,91 @@ export const StaffManagement = () => {
 
         {/* COLUMNA DERECHA: Tabla */}
         <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-gray-800">Equipo de Trabajo</h2>
-            <span className="bg-blue-50 text-blue-700 py-1.5 px-4 rounded-full text-xs font-black uppercase tracking-wider">{users.length} Registrados</span>
+          
+          {/* Cabecera con Buscador Inteligente */}
+          <div className="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-bold text-gray-800">Equipo de Trabajo</h2>
+              <span className="bg-blue-50 text-blue-700 py-1.5 px-4 rounded-full text-xs font-black uppercase tracking-wider">
+                {filteredUsers.length} Registrados
+              </span>
+            </div>
+            
+            {/* 🚨 CAMPO DE BÚSQUEDA 🚨 */}
+            <div className="relative w-full sm:w-64">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              </div>
+              <input 
+                type="text" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar empleado o correo..." 
+                className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+              />
+              {searchTerm && (
+                <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              )}
+            </div>
           </div>
           
           <div className="flex-1 overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-100">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Empleado</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Rol</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {users.map((user) => (
-                  <tr key={user.id} className="group hover:bg-blue-50/40 transition-all">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md transition-transform group-hover:scale-110">
-                          {user.nombre.charAt(0)}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-bold text-gray-900">{user.nombre}</div>
-                          <div className="text-xs text-gray-400">{user.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase ${user.rol === 'SuperAdmin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                        {user.rol}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right space-x-1">
-                      <button onClick={() => startEdit(user)} className="p-2.5 text-blue-600 hover:bg-blue-100 rounded-xl transition-all"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg></button>
-                      {user.rol !== 'SuperAdmin' && (
-                        <button onClick={() => setDeleteModal({ isOpen: true, userId: user.id, userName: user.nombre })} className="p-2.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                      )}
-                    </td>
+            {filteredUsers.length === 0 ? (
+              <div className="flex flex-col justify-center items-center py-20 text-gray-400 px-4 text-center">
+                <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <p className="font-medium text-sm">
+                  {searchTerm 
+                    ? `No se encontró personal que coincida con "${searchTerm}"` 
+                    : 'Aún no hay personal registrado.'
+                  }
+                </p>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-100">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Empleado</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Rol</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {/* 🚨 Renderizamos la lista filtrada 🚨 */}
+                  {filteredUsers.map((user) => (
+                    <tr key={user.id} className="group hover:bg-blue-50/40 transition-all">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md transition-transform group-hover:scale-110">
+                            {user.nombre.charAt(0)}
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-bold text-gray-900 truncate max-w-[150px] sm:max-w-[200px]" title={user.nombre}>{user.nombre}</div>
+                            <div className="text-xs text-gray-400 truncate max-w-[150px] sm:max-w-[200px]" title={user.email}>{user.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase ${user.rol === 'SuperAdmin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {user.rol}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-1">
+                        <button onClick={() => startEdit(user)} className="p-2.5 text-blue-600 hover:bg-blue-100 rounded-xl transition-all" title="Editar">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        </button>
+                        {user.rol !== 'SuperAdmin' && (
+                          <button onClick={() => setDeleteModal({ isOpen: true, userId: user.id, userName: user.nombre })} className="p-2.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all" title="Eliminar">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </div>

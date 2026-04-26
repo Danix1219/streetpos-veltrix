@@ -31,7 +31,6 @@ export const Layout = ({ children }: LayoutProps) => {
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
       ),
-      // 🚨 El SuperAdmin no vende, solo Cajero y Dueño (Admin)
       allowedRoles: ['Cajero', 'Admin'] 
     },
     {
@@ -40,7 +39,6 @@ export const Layout = ({ children }: LayoutProps) => {
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
       ),
-      // 🚨 Solo el Dueño (Admin) gestiona a sus empleados. El SuperAdmin gestiona empresas.
       allowedRoles: ['Admin'] 
     },
     {
@@ -49,7 +47,6 @@ export const Layout = ({ children }: LayoutProps) => {
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
       ),
-      // 🚨 El SuperAdmin no crea categorías de abarrotes.
       allowedRoles: ['Admin'] 
     },
     {
@@ -58,16 +55,14 @@ export const Layout = ({ children }: LayoutProps) => {
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
       ),
-      // 🚨 El SuperAdmin no da de alta inventario.
       allowedRoles: ['Admin'] 
     },
     {
       title: 'Reportes (Cortes)',
-      path: '/admin/reports', // Asumiendo que tienes o tendrás esta ruta
+      path: '/admin/reports',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
       ),
-      // 🚨 Solo el Dueño ve cuánto ganó.
       allowedRoles: ['Admin'] 
     },
     {
@@ -109,12 +104,20 @@ export const Layout = ({ children }: LayoutProps) => {
       >
         {/* Cabecera del Sidebar (Branding) */}
         <div className="h-20 flex items-center px-6 border-b border-gray-100">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-600/20 mr-3">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+          {/* 🚨 CORRECCIÓN: LOGO MÁS GRANDE, BORDES NEÓN Y RESPLANDOR AZUL 🚨 */}
+          <div className="mr-3 flex items-center justify-center w-11 h-11 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.15)] relative bg-gradient-to-br from-[#0f172a] to-[#050810] shrink-0 border border-blue-500/30">
+            {/* Brillo interno suave para dar volumen */}
+            <div className="absolute inset-0 bg-blue-500/20 blur-md rounded-xl pointer-events-none"></div>
+            {/* Logo escalado y con resplandor en lugar de sombra oscura */}
+            <img 
+              src="/streetpos-icon.png" 
+              alt="StreetPOS Icon" 
+              className="w-7 h-7 object-contain relative z-10 hover:scale-110 transition-transform drop-shadow-[0_0_8px_rgba(59,130,246,0.6)]" 
+            />
           </div>
-          <div>
-            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight leading-none">StreetPOS</h1>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">by Veltrix Solutions</span>
+          <div className="overflow-hidden">
+            <h1 className="text-xl font-extrabold text-gray-900 tracking-tight leading-none truncate">StreetPOS</h1>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate block">by Veltrix Solutions</span>
           </div>
         </div>
 
@@ -163,7 +166,7 @@ export const Layout = ({ children }: LayoutProps) => {
             onClick={handleLogout}
             className="flex items-center w-full px-3 py-3 text-sm font-bold text-rose-600 bg-rose-50 rounded-xl hover:bg-rose-100 transition-colors"
           >
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3-3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             Cerrar Sesión
           </button>
         </div>

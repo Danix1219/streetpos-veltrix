@@ -13,6 +13,9 @@ export const ProductManagement = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // ESTADO PARA EL BUSCADOR INTELIGENTE
+  const [searchTerm, setSearchTerm] = useState('');
+  
   // ESTADOS DE PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6; 
@@ -44,12 +47,11 @@ export const ProductManagement = () => {
     setTimeout(() => setToast(null), 4000);
   };
 
-  // 🚨 LECTURA HÍBRIDA (API -> Fallback a IndexedDB) 🚨
+  // LECTURA HÍBRIDA (API -> Fallback a IndexedDB)
   const fetchInitialData = async () => {
     try {
       setLoading(true);
       
-      // Intentamos cargar de la API primero
       if (navigator.onLine) {
         try {
           const [productsRes, categoriesRes] = await Promise.all([
@@ -60,10 +62,7 @@ export const ProductManagement = () => {
           setProducts(productsRes.data);
           setCategories(categoriesRes.data);
           
-          // Guardamos un respaldo de las categorías en localStorage por si acaso
           localStorage.setItem('streetpos_categories', JSON.stringify(categoriesRes.data));
-          
-          // Actualizamos la BD local con los productos frescos
           await db.products.bulkPut(productsRes.data);
         } catch (apiError) {
           throw new Error('Fallo API, pasando a modo local');
@@ -73,7 +72,6 @@ export const ProductManagement = () => {
       }
 
     } catch (err: any) {
-      // MODO OFFLINE: Leemos de la base de datos local
       console.log("Cargando catálogo en modo offline...");
       const localProducts = await db.products.toArray();
       setProducts(localProducts);
@@ -91,6 +89,13 @@ export const ProductManagement = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
+    
+    // VALIDACIÓN DE MÁXIMO DE CARACTERES PARA NÚMEROS
+    if (type === 'number') {
+      const maxDigits = (name === 'precioCompra' || name === 'precioVenta') ? 8 : 6;
+      if (value.length > maxDigits) return; // Bloquea si excede el límite
+    }
+
     setFormData({ 
       ...formData, 
       [name]: type === 'number' ? Number(value) : value 
@@ -115,7 +120,7 @@ export const ProductManagement = () => {
     setFormData({ nombre: '', precioCompra: 0, precioVenta: 0, categoriaId: '', stockActual: 0, stockMinimo: 0 });
   };
 
-  // 🚨 GUARDADO/ACTUALIZACIÓN HÍBRIDA 🚨
+  // GUARDADO/ACTUALIZACIÓN HÍBRIDA
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -128,7 +133,6 @@ export const ProductManagement = () => {
     
     try {
       if (navigator.onLine) {
-        // MODO ONLINE
         if (editingId) {
           await streetposApi.put(`/Products/${editingId}`, formData);
           showToast('Producto actualizado con éxito');
@@ -137,17 +141,16 @@ export const ProductManagement = () => {
           showToast('Producto registrado en el inventario');
         }
       } else {
-        // MODO OFFLINE: Guardamos en IndexedDB
         const localProductToSave = {
           ...formData,
-          id: editingId || crypto.randomUUID() // Si es nuevo, generamos ID temporal
+          id: editingId || crypto.randomUUID()
         };
         await db.products.put(localProductToSave);
         showToast('Guardado localmente. Se sincronizará al tener red.', 'info');
       }
       
       cancelEdit();
-      await fetchInitialData(); // Recargamos la tabla (online u offline)
+      await fetchInitialData();
       
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Fallo en la operación', 'error');
@@ -156,20 +159,19 @@ export const ProductManagement = () => {
     }
   };
 
-  // 🚨 ELIMINACIÓN HÍBRIDA 🚨
+  // ELIMINACIÓN HÍBRIDA
   const confirmDelete = async () => {
     try {
       if (navigator.onLine) {
         await streetposApi.delete(`/Products/${deleteModal.prodId}`);
         showToast('Producto eliminado correctamente');
       } else {
-        // Borrado local
         await db.products.delete(deleteModal.prodId);
         showToast('Producto eliminado localmente.', 'info');
       }
       
       setDeleteModal({ isOpen: false, prodId: '', prodName: '' });
-      await fetchInitialData(); // Refresca la tabla
+      await fetchInitialData();
       
       if (currentProducts.length === 1 && currentPage > 1) {
         setCurrentPage(currentPage - 1);
@@ -184,13 +186,23 @@ export const ProductManagement = () => {
     return cat ? cat.nombre : 'Sin Categoría';
   };
 
-  // LÓGICA DE PAGINACIÓN
+  // LÓGICA DE FILTRADO (BUSCADOR INTELIGENTE)
+  const filteredProducts = products.filter(product => 
+    product.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // LÓGICA DE PAGINACIÓN ACTUALIZADA
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentProducts = products.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(products.length / itemsPerPage);
+  const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
 
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen relative">
@@ -237,14 +249,20 @@ export const ProductManagement = () => {
       <div className="max-w-7xl mx-auto">
         
         {/* Cabecera y Status Offline */}
-        <div className="flex justify-between items-end mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Inventario de Productos</h1>
-            <p className="mt-1 text-sm text-gray-500">Gestiona precios, categorías y niveles de stock de tu catálogo.</p>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+          <div className="flex items-center gap-3">
+            {/* 🚨 ICONO ANTES DEL TÍTULO PRINCIPAL 🚨 */}
+            <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Inventario de Productos</h1>
+              <p className="mt-1 text-sm text-gray-500">Gestiona precios, categorías y niveles de stock de tu catálogo.</p>
+            </div>
           </div>
-          <div className="text-right">
-            {/* 🚨 INDICADOR VISUAL OFFLINE/ONLINE 🚨 */}
-            <span className={`px-2 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm border ${navigator.onLine ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+          <div className="text-right w-full md:w-auto">
+            {/* INDICADOR VISUAL OFFLINE/ONLINE */}
+            <span className={`px-2 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm border inline-flex ${navigator.onLine ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
               <span className={`w-2 h-2 rounded-full animate-pulse ${navigator.onLine ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
               {navigator.onLine ? 'Conectado' : 'Modo Offline'}
             </span>
@@ -268,14 +286,28 @@ export const ProductManagement = () => {
             
             <form onSubmit={handleSubmit} className="space-y-5">
               
-              {/* Nombre */}
+              {/* Nombre (CON MAXLENGTH Y CONTADOR ARRIBA) */}
               <div>
-                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Nombre del Producto</label>
+                <div className="flex justify-between items-end mb-1.5">
+                  <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">Nombre del Producto</label>
+                  <span className={`text-[10px] font-bold ${formData.nombre.length >= 100 ? 'text-rose-500' : 'text-gray-400'}`}>
+                    {formData.nombre.length} / 100
+                  </span>
+                </div>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
-                  <input type="text" name="nombre" required value={formData.nombre} onChange={handleInputChange} className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-medium" placeholder="Ej. Coca Cola 600ml" />
+                  <input 
+                    type="text" 
+                    name="nombre" 
+                    required 
+                    maxLength={100} 
+                    value={formData.nombre} 
+                    onChange={handleInputChange} 
+                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-medium" 
+                    placeholder="Ej. Coca Cola 600ml" 
+                  />
                 </div>
               </div>
 
@@ -298,39 +330,97 @@ export const ProductManagement = () => {
                 </div>
               </div>
               
-              {/* Precios */}
+              {/* Precios (CON LÍMITE DE DÍGITOS Y CONTADOR ARRIBA) */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Costo Unitario</label>
+                  <div className="flex justify-between items-end mb-1.5">
+                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">Costo Unitario</label>
+                    <span className={`text-[10px] font-bold ${String(formData.precioCompra === 0 ? '' : formData.precioCompra).length >= 8 ? 'text-rose-500' : 'text-gray-400'}`}>
+                      {String(formData.precioCompra === 0 ? '' : formData.precioCompra).length} / 8
+                    </span>
+                  </div>
                   <div className="relative">
                     <span className="absolute left-3 top-3 font-bold text-gray-400">$</span>
-                    <input type="number" name="precioCompra" min="0" step="0.01" required value={formData.precioCompra === 0 ? '' : formData.precioCompra} onChange={handleInputChange} className="w-full pl-7 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-medium" placeholder="0.00"/>
+                    <input 
+                      type="number" 
+                      name="precioCompra" 
+                      min="0" 
+                      step="0.01" 
+                      required 
+                      value={formData.precioCompra === 0 ? '' : formData.precioCompra} 
+                      onChange={handleInputChange} 
+                      className="w-full pl-7 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all font-medium" 
+                      placeholder="0.00"
+                    />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Precio Público</label>
+                  <div className="flex justify-between items-end mb-1.5">
+                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">Precio Público</label>
+                    <span className={`text-[10px] font-bold ${String(formData.precioVenta === 0 ? '' : formData.precioVenta).length >= 8 ? 'text-rose-500' : 'text-blue-400'}`}>
+                      {String(formData.precioVenta === 0 ? '' : formData.precioVenta).length} / 8
+                    </span>
+                  </div>
                   <div className="relative">
                     <span className="absolute left-3 top-3 font-bold text-blue-500">$</span>
-                    <input type="number" name="precioVenta" min="0" step="0.01" required value={formData.precioVenta === 0 ? '' : formData.precioVenta} onChange={handleInputChange} className="w-full pl-7 p-3 bg-blue-50/50 border border-blue-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-blue-50 transition-all font-bold text-blue-700" placeholder="0.00" />
+                    <input 
+                      type="number" 
+                      name="precioVenta" 
+                      min="0" 
+                      step="0.01" 
+                      required 
+                      value={formData.precioVenta === 0 ? '' : formData.precioVenta} 
+                      onChange={handleInputChange} 
+                      className="w-full pl-7 p-3 bg-blue-50/50 border border-blue-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-blue-50 transition-all font-bold text-blue-700" 
+                      placeholder="0.00" 
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Inventario */}
+              {/* Inventario (CON LÍMITE DE DÍGITOS Y CONTADOR ARRIBA) */}
               <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
                 <div>
-                  <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                    Stock Inicial
-                  </label>
-                  <input type="number" name="stockActual" min="0" required value={formData.stockActual === 0 ? '' : formData.stockActual} onChange={handleInputChange} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all font-medium" placeholder="Ej. 50" />
+                  <div className="flex justify-between items-end mb-1.5">
+                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                      Stock Inicial
+                    </label>
+                    <span className={`text-[10px] font-bold ${String(formData.stockActual === 0 ? '' : formData.stockActual).length >= 6 ? 'text-rose-500' : 'text-gray-400'}`}>
+                      {String(formData.stockActual === 0 ? '' : formData.stockActual).length} / 6
+                    </span>
+                  </div>
+                  <input 
+                    type="number" 
+                    name="stockActual" 
+                    min="0" 
+                    required 
+                    value={formData.stockActual === 0 ? '' : formData.stockActual} 
+                    onChange={handleInputChange} 
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all font-medium" 
+                    placeholder="Ej. 50" 
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    Alerta Mínima
-                  </label>
-                  <input type="number" name="stockMinimo" min="0" required value={formData.stockMinimo === 0 ? '' : formData.stockMinimo} onChange={handleInputChange} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white transition-all font-medium" placeholder="Ej. 10" />
+                  <div className="flex justify-between items-end mb-1.5">
+                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
+                      <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                      Alerta Mínima
+                    </label>
+                    <span className={`text-[10px] font-bold ${String(formData.stockMinimo === 0 ? '' : formData.stockMinimo).length >= 6 ? 'text-rose-500' : 'text-gray-400'}`}>
+                      {String(formData.stockMinimo === 0 ? '' : formData.stockMinimo).length} / 6
+                    </span>
+                  </div>
+                  <input 
+                    type="number" 
+                    name="stockMinimo" 
+                    min="0" 
+                    required 
+                    value={formData.stockMinimo === 0 ? '' : formData.stockMinimo} 
+                    onChange={handleInputChange} 
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white transition-all font-medium" 
+                    placeholder="Ej. 10" 
+                  />
                 </div>
               </div>
 
@@ -349,20 +439,47 @@ export const ProductManagement = () => {
 
           {/* LADO DERECHO: TABLA Y PAGINACIÓN */}
           <div className="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-            <div className="p-5 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-lg font-bold text-gray-800">Catálogo Activo</h2>
-              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest">
-                {products.length} Registros
-              </span>
+            
+            {/* Cabecera con Buscador Inteligente */}
+            <div className="p-5 sm:p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-bold text-gray-800">Catálogo Activo</h2>
+                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest">
+                  {filteredProducts.length} Registros
+                </span>
+              </div>
+              
+              <div className="relative w-full sm:w-64">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
+                <input 
+                  type="text" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar producto..." 
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+                />
+                {searchTerm && (
+                  <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                )}
+              </div>
             </div>
             
             <div className="flex-1 overflow-x-auto">
               {loading ? (
                 <div className="flex justify-center items-center py-20 text-gray-500 font-bold">Cargando inventario...</div>
-              ) : products.length === 0 ? (
-                <div className="flex flex-col justify-center items-center py-20 text-gray-400">
+              ) : filteredProducts.length === 0 ? (
+                <div className="flex flex-col justify-center items-center py-20 text-gray-400 px-4 text-center">
                   <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                  <p>Aún no has registrado ningún producto.</p>
+                  <p className="font-medium text-sm">
+                    {searchTerm 
+                      ? `No se encontraron productos que coincidan con "${searchTerm}"` 
+                      : 'Aún no has registrado ningún producto.'
+                    }
+                  </p>
                 </div>
               ) : (
                 <table className="min-w-full text-left border-collapse whitespace-nowrap">
@@ -379,23 +496,19 @@ export const ProductManagement = () => {
                       const isLowStock = prod.stockActual <= prod.stockMinimo;
                       return (
                         <tr key={prod.id} className="hover:bg-gray-50/80 transition-colors group">
-                          
-                          {/* Info Producto y Categoría */}
                           <td className="px-6 py-4">
-                            <p className="font-bold text-gray-900 text-sm">{prod.nombre}</p>
+                            <p className="font-bold text-gray-900 text-sm truncate max-w-[200px] sm:max-w-[250px]" title={prod.nombre}>
+                              {prod.nombre}
+                            </p>
                             <span className="inline-flex items-center mt-1 bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
                               <svg className="w-3 h-3 mr-1 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
                               {getCategoryName(prod.categoriaId)}
                             </span>
                           </td>
-
-                          {/* Precios (Compra / Venta) */}
                           <td className="px-6 py-4 text-right">
                             <p className="text-sm font-black text-blue-600">${prod.precioVenta.toFixed(2)}</p>
                             <p className="text-xs text-gray-400 font-medium">Costo: ${prod.precioCompra.toFixed(2)}</p>
                           </td>
-
-                          {/* Indicador de Stock Visual */}
                           <td className="px-6 py-4 text-center">
                             <div className={`inline-flex flex-col items-center px-3 py-1.5 rounded-lg border ${isLowStock ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'}`}>
                               <span className={`text-sm font-black ${isLowStock ? 'text-rose-700' : 'text-emerald-700'}`}>
@@ -406,8 +519,6 @@ export const ProductManagement = () => {
                               </span>
                             </div>
                           </td>
-
-                          {/* Acciones con Iconos */}
                           <td className="px-6 py-4 text-right space-x-2">
                             <button onClick={() => startEdit(prod)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors inline-flex" title="Editar">
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -425,10 +536,10 @@ export const ProductManagement = () => {
             </div>
 
             {/* PAGINADOR */}
-            {products.length > itemsPerPage && (
+            {filteredProducts.length > itemsPerPage && (
               <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
                 <p className="text-xs font-bold text-gray-500">
-                  Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, products.length)} de {products.length}
+                  Mostrando {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, filteredProducts.length)} de {filteredProducts.length}
                 </p>
                 <div className="flex items-center gap-2">
                   <button 

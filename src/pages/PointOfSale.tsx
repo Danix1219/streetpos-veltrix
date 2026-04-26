@@ -256,14 +256,20 @@ export const PointOfSale = () => {
       <div className="max-w-7xl mx-auto">
         
         {/* Cabecera del POS */}
-        <div className="flex justify-between items-end mb-4 sm:mb-6">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Terminal de Venta</h1>
-            <p className="text-xs sm:text-sm text-gray-500">Cajero en turno: <span className="font-semibold">{nombre || 'Usuario'}</span></p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 sm:mb-6 gap-4">
+          <div className="flex items-center gap-3">
+            {/* 🚨 ICONO AÑADIDO AQUÍ 🚨 */}
+            <div className="p-3 bg-blue-100 text-blue-600 rounded-xl hidden sm:block">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">Terminal de Venta</h1>
+              <p className="text-xs sm:text-sm text-gray-500">Cajero en turno: <span className="font-semibold">{nombre || 'Usuario'}</span></p>
+            </div>
           </div>
-          <div className="text-right">
+          <div className="text-right w-full sm:w-auto">
             {/* Indicador de caja visual, ahora nos servirá también para ver si estamos offline */}
-            <span className={`px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-sm font-bold uppercase tracking-wider flex items-center gap-1 ${navigator.onLine ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+            <span className={`px-2 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm border inline-flex ${navigator.onLine ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
               <span className={`w-2 h-2 rounded-full animate-pulse ${navigator.onLine ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
               {navigator.onLine ? 'Caja Abierta' : 'Modo Offline'}
             </span>
