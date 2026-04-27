@@ -404,4 +404,4 @@ export const CategoryManagement = () => {
       </div>
     </div>
   );
-};
+};  

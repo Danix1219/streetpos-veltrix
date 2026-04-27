@@ -43,13 +43,14 @@ export const Login = () => {
     setLoading(true);
 
     try {
-      // Nota: Puedes enviar captchaToken al backend si tu API lo requiere para validarlo
       const response = await streetposApi.post('/Auth/login', { email, password, captchaToken });
       
       // 1. Verificamos la bandera de seguridad
       if (response.data.requirePasswordChange === true) {
         setSuccessMsg('Por tu seguridad, debes establecer una contraseña definitiva.');
         setView('force-change');
+        // 🚨 FIX: Limpiamos el token consumido para que resuelva uno nuevo al cambiar la clave
+        setCaptchaToken(null); 
         setLoading(false);
         return; 
       }
@@ -79,6 +80,12 @@ export const Login = () => {
     setError('');
     setSuccessMsg('');
 
+    // 🚨 FIX: Validar Captcha antes de cambiar contraseña
+    if (!captchaToken) {
+      setError('Por favor, verifica que no eres un robot.');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       setError('Las contraseñas no coinciden.');
       return;
@@ -102,7 +109,8 @@ export const Login = () => {
       // Iniciamos sesión automáticamente con la nueva clave
       const loginRes = await streetposApi.post('/Auth/login', { 
         email: email, 
-        password: newPassword 
+        password: newPassword,
+        captchaToken: captchaToken // 🚨 FIX: Enviamos el nuevo token validado
       });
       
       const { token, rol, nombre } = loginRes.data;
@@ -308,6 +316,18 @@ export const Login = () => {
                     placeholder="Repite tu nueva contraseña" 
                   />
                 </div>
+
+                {/* 🚨 INTEGRACIÓN DE RECAPTCHA PARA EL CAMBIO DE CLAVE 🚨 */}
+                <div className="flex justify-center w-full pt-2 pb-1">
+                  <div className="transform scale-95 sm:scale-100 origin-center transition-transform">
+                    <ReCAPTCHA
+                      sitekey="6Ldy4MUsAAAAAMcFL3FQNdKWBbhMvrk-y69O5lj4"
+                      onChange={(token) => setCaptchaToken(token)}
+                      onExpired={() => setCaptchaToken(null)}
+                    />
+                  </div>
+                </div>
+
                 <button type="submit" disabled={loading} className={`w-full py-3.5 rounded-xl font-bold text-white transition-all ${loading ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 active:scale-[0.98]'}`}>
                   {loading ? 'Guardando...' : 'Guardar e Iniciar Sesión'}
                 </button>
