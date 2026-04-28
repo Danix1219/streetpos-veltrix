@@ -6,8 +6,7 @@ import type { Category } from '../types/category';
 import type { CartItem, SalePayload } from '../types/sale';
 import { db } from '../db/db';
 
-// 🚨 IMPORTAMOS TU HOOK DE SINCRONIZACIÓN 🚨
-import { useSync } from '../hooks/useSync'; // Ajusta esta ruta según tu carpeta (ej. '../hooks/useSync')
+// 🚨 ELIMINAMOS EL IMPORT Y EL USO DE useSync AQUÍ PARA EVITAR DUPLICADOS 🚨
 
 export const PointOfSale = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -23,11 +22,7 @@ export const PointOfSale = () => {
   const [metodoPago, setMetodoPago] = useState('Efectivo');
   const [notas, setNotas] = useState('');
 
-  // Obtenemos el nombre y el ID del cajero logueado
   const { nombre, id } = useContext(AuthContext);
-
-  // 🚨 CONECTAMOS EL HOOK AL USUARIO ACTUAL 🚨
-  const { isSyncing, syncSuccess, pendingCount } = useSync(id);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; action: 'clear' | 'checkout' }>({
@@ -39,24 +34,6 @@ export const PointOfSale = () => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000); 
   };
-
-  // ==========================================
-  // 🚨 EFECTOS PARA LANZAR LOS TOASTS DE SINCRONIZACIÓN 🚨
-  // ==========================================
-  useEffect(() => {
-    if (isSyncing && pendingCount > 0) {
-      showToast(`Sincronizando ${pendingCount} venta(s) a la nube...`, 'info');
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSyncing, pendingCount]);
-
-  useEffect(() => {
-    if (syncSuccess) {
-      showToast('¡Ventas sincronizadas correctamente!', 'success');
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [syncSuccess]);
-  // ==========================================
 
   useEffect(() => {
     if (id) {
@@ -168,7 +145,7 @@ export const PointOfSale = () => {
       };
       
       await db.offlineSales.add(offlineSale);
-      showToast('Venta guardada localmente. Se enviará al volver el internet.', 'info');
+      showToast('Venta encolada. Se enviará al servidor en breve.', 'info');
     } catch (e) {
       showToast('Error al guardar venta en base de datos local.', 'error');
     }
@@ -199,6 +176,7 @@ export const PointOfSale = () => {
           await streetposApi.post('/Sales', payload);
           showToast('¡Venta registrada con éxito!', 'success');
         } catch (apiError) {
+          console.warn("Backend no respondió bien, guardando offline...");
           await saveSaleOffline(payload);
         }
       } else {

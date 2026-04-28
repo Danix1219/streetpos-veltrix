@@ -10,13 +10,14 @@ interface LayoutProps {
 }
 
 export const Layout = ({ children }: LayoutProps) => {
-  const { rol, nombre, logout } = useContext(AuthContext);
+  // 🚨 FIX 1: Extraemos el 'id' del usuario desde el AuthContext 🚨
+  const { rol, nombre, id, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // 🚨 2. DESPERTAMOS EL HOOK EN SEGUNDO PLANO Y EXTRAEMOS SUS ESTADOS 🚨
-  const { isSyncing, syncSuccess, pendingCount } = useSync();
+  // 🚨 FIX 2: Le pasamos el 'id' al hook para que sepa de quién son las ventas 🚨
+  const { isSyncing, syncSuccess, pendingCount } = useSync(id);
 
   const handleLogout = () => {
     logout();
@@ -41,7 +42,6 @@ export const Layout = ({ children }: LayoutProps) => {
       ),
       allowedRoles: ['Admin'] 
     },
-    // 🚨 INTEGRACIÓN 1: SUCURSALES 🚨
     {
       title: 'Sucursales',
       path: '/admin/branches',
@@ -66,7 +66,6 @@ export const Layout = ({ children }: LayoutProps) => {
       ),
       allowedRoles: ['Admin'] 
     },
-    // 🚨 INTEGRACIÓN 2: INVENTARIO 🚨
     {
       title: 'Inventario',
       path: '/admin/inventory',
@@ -123,9 +122,7 @@ export const Layout = ({ children }: LayoutProps) => {
         {/* Cabecera del Sidebar (Branding) */}
         <div className="h-20 flex items-center px-6 border-b border-gray-100">
           <div className="mr-3 flex items-center justify-center w-11 h-11 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.15)] relative bg-gradient-to-br from-[#0f172a] to-[#050810] shrink-0 border border-blue-500/30">
-            {/* Brillo interno suave para dar volumen */}
             <div className="absolute inset-0 bg-blue-500/20 blur-md rounded-xl pointer-events-none"></div>
-            {/* Logo escalado y con resplandor en lugar de sombra oscura */}
             <img 
               src="/streetpos-icon.png" 
               alt="StreetPOS Icon" 
@@ -203,7 +200,6 @@ export const Layout = ({ children }: LayoutProps) => {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-gray-50 h-screen overflow-y-auto relative">
         
         {/* 🚨 3. INDICADOR VISUAL DE SINCRONIZACIÓN GLOBAL 🚨 */}
-        {/* Solo se dibuja en pantalla si está sincronizando o si acaba de terminar con éxito */}
         {(isSyncing || syncSuccess) && (
           <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] animate-fade-in">
             {isSyncing ? (
@@ -213,7 +209,7 @@ export const Layout = ({ children }: LayoutProps) => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Subiendo {pendingCount} venta{pendingCount > 1 ? 's' : ''} a la nube...
+                Subiendo {pendingCount} venta{pendingCount !== 1 ? 's' : ''} a la nube...
               </div>
             ) : syncSuccess ? (
               // Cápsula Verde: Éxito
