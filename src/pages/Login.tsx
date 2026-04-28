@@ -1,5 +1,5 @@
 import { useState, useContext, useEffect } from 'react';
-import ReCAPTCHA from 'react-google-recaptcha'; // <-- Librería importada
+import ReCAPTCHA from 'react-google-recaptcha'; 
 import streetposApi from '../api/axiosConfig';
 import { AuthContext } from '../context/AuthContext';
 
@@ -43,7 +43,6 @@ export const Login = () => {
     setLoading(true);
 
     try {
-      // Nota: Puedes enviar captchaToken al backend si tu API lo requiere para validarlo
       const response = await streetposApi.post('/Auth/login', { email, password, captchaToken });
       
       // 1. Verificamos la bandera de seguridad
@@ -54,12 +53,16 @@ export const Login = () => {
         return; 
       }
 
+      // 🚨 FIX: Extraemos el ID del usuario (Soporta 'id' o 'userId' según lo que envíe tu C#)
+      const { id, userId, token, rol, nombre } = response.data;
+      const uid = id || userId; 
+
       // 2. Si no requiere cambio, entra normal
-      const { token, rol, nombre } = response.data;
-      if (token) {
-        login(token, nombre, rol);
+      if (token && uid) {
+        // 🚨 Pasamos los 4 parámetros, empezando por el ID!
+        login(uid, token, nombre, rol);
       } else {
-        setError('El servidor no devolvió un token de acceso válido.');
+        setError('El servidor no devolvió un token de acceso o ID válido.');
       }
       
     } catch (err: any) {
@@ -105,8 +108,15 @@ export const Login = () => {
         password: newPassword 
       });
       
-      const { token, rol, nombre } = loginRes.data;
-      login(token, nombre, rol);
+      // 🚨 FIX: Extraemos y pasamos el ID también aquí
+      const { id, userId, token, rol, nombre } = loginRes.data;
+      const uid = id || userId;
+      
+      if (token && uid) {
+        login(uid, token, nombre, rol);
+      } else {
+        setError('Cambio exitoso, pero el servidor falló al iniciar sesión.');
+      }
 
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cambiar la contraseña.');
@@ -333,7 +343,7 @@ export const Login = () => {
           <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] bg-blue-800 rounded-full mix-blend-multiply filter blur-[120px] opacity-80 animate-[blob_7s_infinite_4s]"></div>
         </div>
 
-        {/* Contenedor Principal (Flex Row para alinear Texto Izquierda y Mascota Derecha) */}
+        {/* Contenedor Principal */}
         <div className="absolute inset-0 flex items-center justify-center p-16">
           <div className="w-full max-w-6xl flex flex-row items-center justify-between gap-16">
               
@@ -346,7 +356,6 @@ export const Login = () => {
                      Acelera tus ventas, controla tu inventario y domina el crecimiento de tu negocio en tiempo real.
                  </p>
                  
-                 {/* Insignias de confianza corporativas (Opcional, pero da mucho valor) */}
                  <div className="mt-12 flex gap-6 items-center">
                     <div className="flex flex-col gap-1 border-l-2 border-blue-400/30 pl-4">
                         <span className="text-3xl font-black text-white">99.9%</span>
@@ -363,7 +372,7 @@ export const Login = () => {
             <div className="flex-1 flex justify-end items-center relative animate-fade-in-up delay-1000">
                 <div className="relative group animate-float flex flex-col items-center">
                      
-                     {/* Etiqueta de Estado Moderno (Reemplaza el globo de cómic) */}
+                     {/* Etiqueta de Estado Moderno */}
                     <div className="absolute -top-10 -left-12 xl:-left-20 group-hover:scale-105 transition-transform duration-500 bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-4 z-20">
                         <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shrink-0">
                             <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
@@ -374,7 +383,7 @@ export const Login = () => {
                         </div>
                     </div>
                      
-                     {/* Imagen de Rusty (PNG transparente) */}
+                     {/* Imagen de Rusty */}
                     <img 
                         src="/Rusty.png" 
                         alt="Rusty, the StreetPOS mascot" 

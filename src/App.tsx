@@ -13,6 +13,10 @@ import { ResetPassword } from './pages/ResetPassword';
 import { VerifyEmail } from './pages/VerifyEmail';
 import { ReportsManagement } from './pages/ReportsManagement';
 
+// 🚨 NUEVAS PÁGINAS IMPORTADAS 🚨
+import { BranchManagement } from './pages/BranchManagement';
+import { InventoryManagement } from './pages/InventoryManagement';
+
 // Componente Layout
 import { Layout } from './components/Layout';
 
@@ -40,8 +44,7 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* LA RAÍZ: Si tiene token, lo manda a su panel. Si no, lo manda a /login.
-      */}
+      {/* LA RAÍZ: Si tiene token, lo manda a su panel. Si no, lo manda a /login. */}
       <Route path="/" element={<Navigate to={token ? redirectPath : "/login"} replace />} />
 
       {/* LOGIN: Si ya tiene token, NO DEBE ESTAR AQUÍ, lo mandamos a su panel. 
@@ -77,6 +80,20 @@ const AppRoutes = () => {
       <Route path="/admin/products" element={
         <ProtectedRoute allowedRoles={['Admin']}>
           <Layout><ProductManagement /></Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* 🚨 NUEVA RUTA: GESTIÓN DE SUCURSALES 🚨 */}
+      <Route path="/admin/branches" element={
+        <ProtectedRoute allowedRoles={['Admin']}>
+          <Layout><BranchManagement /></Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* 🚨 NUEVA RUTA: GESTIÓN DE INVENTARIO 🚨 */}
+      <Route path="/admin/inventory" element={
+        <ProtectedRoute allowedRoles={['Admin']}>
+          <Layout><InventoryManagement /></Layout>
         </ProtectedRoute>
       } />
 

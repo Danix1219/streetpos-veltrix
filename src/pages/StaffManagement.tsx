@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import streetposApi from '../api/axiosConfig';
 import type { User } from '../types/user';
+// 🚨 IMPORTAMOS EL TIPO DE SUCURSAL 🚨
+import type { Branch } from '../types/branch';
 
 export const StaffManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
+  // 🚨 ESTADO PARA ALMACENAR LAS SUCURSALES DISPONIBLES 🚨
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🚨 NUEVO: ESTADO PARA EL BUSCADOR INTELIGENTE 🚨
   const [searchTerm, setSearchTerm] = useState('');
 
-  // ESTADOS PARA UI/UX (Modales y Toasts)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; userId: string; userName: string }>({
     isOpen: false,
@@ -18,16 +20,19 @@ export const StaffManagement = () => {
   });
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false); // Estado del ojito
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // 🚨 AÑADIMOS branchId AL ESTADO DEL FORMULARIO 🚨
   const [formData, setFormData] = useState({
     nombre: '',
     email: '',
     password: '',
-    rol: 'Cajero'
+    rol: 'Cajero',
+    branchId: '' 
   });
 
   useEffect(() => {
-    fetchUsers();
+    fetchInitialData();
   }, []);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -35,12 +40,27 @@ export const StaffManagement = () => {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // 🚨 DESCARGAMOS USUARIOS Y SUCURSALES AL MISMO TIEMPO 🚨
+  const fetchInitialData = async () => {
+    try {
+      const [usersRes, branchesRes] = await Promise.all([
+        streetposApi.get('/Users'),
+        streetposApi.get('/Branches')
+      ]);
+      setUsers(usersRes.data);
+      setBranches(branchesRes.data);
+    } catch (err: any) {
+      showToast('Error al cargar la información del sistema', 'error');
+    }
+  };
+
+  // Función ligera solo para recargar la tabla después de guardar/eliminar
   const fetchUsers = async () => {
     try {
       const response = await streetposApi.get('/Users');
       setUsers(response.data);
     } catch (err: any) {
-      showToast('Error al cargar el personal', 'error');
+      showToast('Error al actualizar la tabla', 'error');
     }
   };
 
@@ -50,29 +70,41 @@ export const StaffManagement = () => {
 
   const startEdit = (user: User) => {
     setEditingId(user.id);
-    setFormData({ nombre: user.nombre, email: user.email, password: '', rol: user.rol });
+    setFormData({ 
+      nombre: user.nombre, 
+      email: user.email, 
+      password: '', 
+      rol: user.rol,
+      branchId: user.branchId || '' // 🚨 Carga la sucursal actual
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setFormData({ nombre: '', email: '', password: '', rol: 'Cajero' });
-    setShowPassword(false); // Reseteamos el ojito al cancelar
+    setFormData({ nombre: '', email: '', password: '', rol: 'Cajero', branchId: '' });
+    setShowPassword(false); 
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    
+    // 🚨 PREPARAMOS EL PAYLOAD CON LA SUCURSAL 🚨
+    const payloadToSave = {
+      nombre: formData.nombre,
+      email: formData.email,
+      rol: formData.rol,
+      password: formData.password,
+      branchId: formData.branchId === '' ? null : formData.branchId
+    };
+
     try {
       if (editingId) {
-        await streetposApi.put(`/Users/${editingId}`, {
-          nombre: formData.nombre,
-          email: formData.email,
-          rol: formData.rol
-        });
+        await streetposApi.put(`/Users/${editingId}`, payloadToSave);
         showToast('¡Datos actualizados correctamente!');
       } else {
-        await streetposApi.post('/Users', formData);
+        await streetposApi.post('/Users', payloadToSave);
         showToast('¡Empleado registrado con éxito!');
       }
       cancelEdit();
@@ -95,8 +127,6 @@ export const StaffManagement = () => {
     }
   };
 
-  // 🚨 NUEVO: LÓGICA DE FILTRADO (BUSCADOR INTELIGENTE) 🚨
-  // Filtra buscando coincidencias en el nombre o en el correo electrónico
   const filteredUsers = users.filter(user => 
     user.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -105,7 +135,7 @@ export const StaffManagement = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8 relative">
       
-      {/* --- COMPONENTE TOAST (Notificación flotante) --- */}
+      {/* --- COMPONENTE TOAST --- */}
       {toast && (
         <div className={`fixed top-5 right-5 z-50 flex items-center p-4 mb-4 text-white rounded-2xl shadow-2xl animate-bounce-short ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
           <div className="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 bg-white/20 rounded-lg mr-3">
@@ -141,13 +171,12 @@ export const StaffManagement = () => {
       {/* Encabezado del Panel */}
       <div className="max-w-7xl mx-auto mb-8">
         <div className="flex items-center gap-3">
-          {/* 🚨 ICONO AÑADIDO AQUÍ 🚨 */}
           <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Gestión de Personal</h1>
-            <p className="mt-1 text-sm text-gray-500">Administra los accesos y roles de tu equipo de trabajo.</p>
+            <p className="mt-1 text-sm text-gray-500">Administra los accesos y sucursales de tu equipo de trabajo.</p>
           </div>
         </div>
       </div>
@@ -164,11 +193,10 @@ export const StaffManagement = () => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             
-            {/* Nombre (CON MAXLENGTH Y CONTADOR) */}
+            {/* Nombre */}
             <div>
               <div className="flex justify-between items-end mb-1">
                 <label className="block text-sm font-semibold text-gray-700">Nombre Completo</label>
-                {/* 🚨 INDICADOR VISUAL 🚨 */}
                 <span className={`text-[10px] font-bold ${formData.nombre.length >= 100 ? 'text-rose-500' : 'text-gray-400'}`}>
                   {formData.nombre.length} / 100
                 </span>
@@ -185,11 +213,10 @@ export const StaffManagement = () => {
               />
             </div>
             
-            {/* Email (CON MAXLENGTH Y CONTADOR) */}
+            {/* Email */}
             <div>
               <div className="flex justify-between items-end mb-1">
                 <label className="block text-sm font-semibold text-gray-700">Correo Electrónico</label>
-                {/* 🚨 INDICADOR VISUAL 🚨 */}
                 <span className={`text-[10px] font-bold ${formData.email.length >= 100 ? 'text-rose-500' : 'text-gray-400'}`}>
                   {formData.email.length} / 100
                 </span>
@@ -237,9 +264,26 @@ export const StaffManagement = () => {
               </div>
             )}
 
+            {/* 🚨 NUEVO: SUCURSAL 🚨 */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Sucursal Asignada</label>
+              <select 
+                name="branchId" 
+                value={formData.branchId} 
+                onChange={handleInputChange} 
+                required={formData.rol !== 'SuperAdmin'}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer"
+              >
+                <option value="" disabled>-- Selecciona una Sucursal --</option>
+                {branches.map(branch => (
+                  <option key={branch.id} value={branch.id}>{branch.nombre}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Rol */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Rol</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Rol en el Sistema</label>
               <select name="rol" value={formData.rol} onChange={handleInputChange} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer">
                 <option value="Cajero">Cajero (Ventas)</option>
                 <option value="Admin">Gerente (Admin)</option>
@@ -260,7 +304,6 @@ export const StaffManagement = () => {
         {/* COLUMNA DERECHA: Tabla */}
         <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
           
-          {/* Cabecera con Buscador Inteligente */}
           <div className="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-bold text-gray-800">Equipo de Trabajo</h2>
@@ -269,7 +312,6 @@ export const StaffManagement = () => {
               </span>
             </div>
             
-            {/* 🚨 CAMPO DE BÚSQUEDA 🚨 */}
             <div className="relative w-full sm:w-64">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -305,18 +347,17 @@ export const StaffManagement = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Empleado</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Rol</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Ubicación / Rol</th>
                     <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-widest">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {/* 🚨 Renderizamos la lista filtrada 🚨 */}
                   {filteredUsers.map((user) => (
                     <tr key={user.id} className="group hover:bg-blue-50/40 transition-all">
                       <td className="px-6 py-4">
                         <div className="flex items-center">
                           <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-md transition-transform group-hover:scale-110">
-                            {user.nombre.charAt(0)}
+                            {user.nombre.charAt(0).toUpperCase()}
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-bold text-gray-900 truncate max-w-[150px] sm:max-w-[200px]" title={user.nombre}>{user.nombre}</div>
@@ -325,9 +366,16 @@ export const StaffManagement = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase ${user.rol === 'SuperAdmin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {user.rol}
-                        </span>
+                        {/* 🚨 MOSTRAMOS SUCURSAL Y ROL 🚨 */}
+                        <div className="flex flex-col items-start gap-1.5">
+                          <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md flex items-center gap-1 border border-gray-200 truncate max-w-[150px]" title={user.branchName || 'Matriz'}>
+                            <svg className="w-3 h-3 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                            {user.branchName || 'Matriz'}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border ${user.rol === 'SuperAdmin' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                            {user.rol}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-right space-x-1">
                         <button onClick={() => startEdit(user)} className="p-2.5 text-blue-600 hover:bg-blue-100 rounded-xl transition-all" title="Editar">

@@ -1,49 +1,54 @@
 import { createContext, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// 1. Definimos qué datos guardaremos de la sesión
+// 1. Agregamos el "id" a la interfaz
 interface AuthContextType {
+  id: string | null;      // 🚨 NUEVO: Fundamental para IndexedDB y ventas
   token: string | null;
   nombre: string | null;
   rol: string | null;
-  login: (token: string, nombre: string, rol: string) => void;
+  login: (id: string, token: string, nombre: string, rol: string) => void;
   logout: () => void;
 }
 
-// 2. Creamos el contexto
 export const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
-// 3. Creamos el Proveedor (El componente que envolverá tu App)
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
-const [nombre, setNombre] = useState<string | null>(() => localStorage.getItem('nombre'));
-const [rol, setRol] = useState<string | null>(() => localStorage.getItem('rol'));
+  // 2. Agregamos el estado para el ID
+  const [id, setId] = useState<string | null>(() => localStorage.getItem('userId'));
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
+  const [nombre, setNombre] = useState<string | null>(() => localStorage.getItem('nombre'));
+  const [rol, setRol] = useState<string | null>(() => localStorage.getItem('rol'));
+  
   const navigate = useNavigate();
 
-  const login = (newToken: string, newNombre: string, newRol: string) => {
-    // Guardamos en LocalStorage para que no se pierda al recargar la página
+  // 3. Actualizamos la función login para recibir el ID
+  const login = (newId: string, newToken: string, newNombre: string, newRol: string) => {
+    localStorage.setItem('userId', newId);
     localStorage.setItem('token', newToken);
     localStorage.setItem('nombre', newNombre);
     localStorage.setItem('rol', newRol);
     
-    // Guardamos en el estado de React
+    setId(newId);
     setToken(newToken);
     setNombre(newNombre);
     setRol(newRol);
     
-    navigate('/'); // Lo mandamos a la pantalla principal
+    navigate('/'); 
   };
 
   const logout = () => {
-    localStorage.clear();
+    localStorage.clear(); // Esto borra todo de golpe (es más seguro)
+    setId(null);
     setToken(null);
     setNombre(null);
     setRol(null);
+    
     navigate('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ token, nombre, rol, login, logout }}>
+    <AuthContext.Provider value={{ id, token, nombre, rol, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

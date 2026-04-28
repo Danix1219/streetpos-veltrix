@@ -1,26 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import streetposApi from '../api/axiosConfig';
+import { AuthContext } from '../context/AuthContext'; // 🚨 IMPORTAMOS EL CONTEXTO
 import type { Product } from '../types/product';
 import type { Category } from '../types/category'; 
-
-// 🚨 IMPORTAMOS LA BASE DE DATOS LOCAL 🚨
 import { db } from '../db/db';
 
 export const ProductManagement = () => {
+  const { rol } = useContext(AuthContext); // 🚨 EXTRAEMOS EL ROL DEL USUARIO
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  // ESTADO PARA EL BUSCADOR INTELIGENTE
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // ESTADOS DE PAGINACIÓN
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6; 
   
-  // ESTADOS PARA UI/UX (Toasts y Modales)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; prodId: string; prodName: string }>({
     isOpen: false,
@@ -28,14 +25,11 @@ export const ProductManagement = () => {
     prodName: ''
   });
 
-  // ESTADO DEL FORMULARIO CON STOCK
   const [formData, setFormData] = useState({
     nombre: '',
     precioCompra: 0,
     precioVenta: 0,
-    categoriaId: '',
-    stockActual: 0,
-    stockMinimo: 0
+    categoriaId: ''
   });
 
   useEffect(() => {
@@ -47,41 +41,43 @@ export const ProductManagement = () => {
     setTimeout(() => setToast(null), 4000);
   };
 
-  // LECTURA HÍBRIDA (API -> Fallback a IndexedDB)
   const fetchInitialData = async () => {
     try {
       setLoading(true);
       
       if (navigator.onLine) {
         try {
-          const [productsRes, categoriesRes] = await Promise.all([
-            streetposApi.get('/Products'),
-            streetposApi.get('/Categories')
-          ]);
-          
-          setProducts(productsRes.data);
-          setCategories(categoriesRes.data);
-          
-          localStorage.setItem('streetpos_categories', JSON.stringify(categoriesRes.data));
-          await db.products.bulkPut(productsRes.data);
-        } catch (apiError) {
-          throw new Error('Fallo API, pasando a modo local');
+          const catRes = await streetposApi.get('/Categories');
+          setCategories(catRes.data);
+          localStorage.setItem('streetpos_categories', JSON.stringify(catRes.data));
+        } catch (catErr) {
+          console.warn("Error al cargar categorías de la API, usando caché local.");
+          const cachedCats = localStorage.getItem('streetpos_categories');
+          if (cachedCats) setCategories(JSON.parse(cachedCats));
+        }
+
+        try {
+          const prodRes = await streetposApi.get('/Products');
+          setProducts(prodRes.data);
+          await db.products.clear();
+          await db.products.bulkAdd(prodRes.data);
+        } catch (prodErr) {
+          console.warn("Error al cargar productos de la API, usando caché local.");
+          const localProducts = await db.products.toArray();
+          setProducts(localProducts as Product[]);
         }
       } else {
-        throw new Error('Sin conexión, pasando a modo local');
+        const localProducts = await db.products.toArray();
+        setProducts(localProducts as Product[]);
+        
+        const cachedCats = localStorage.getItem('streetpos_categories');
+        if (cachedCats) setCategories(JSON.parse(cachedCats));
+        
+        showToast('Trabajando en modo sin conexión', 'info');
       }
 
     } catch (err: any) {
-      console.log("Cargando catálogo en modo offline...");
-      const localProducts = await db.products.toArray();
-      setProducts(localProducts);
-      
-      const cachedCats = localStorage.getItem('streetpos_categories');
-      if (cachedCats) setCategories(JSON.parse(cachedCats));
-      
-      if (!navigator.onLine) {
-         showToast('Trabajando en modo sin conexión', 'info');
-      }
+      showToast('Error crítico al inicializar la vista.', 'error');
     } finally {
       setLoading(false);
     }
@@ -90,10 +86,9 @@ export const ProductManagement = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
-    // VALIDACIÓN DE MÁXIMO DE CARACTERES PARA NÚMEROS
     if (type === 'number') {
       const maxDigits = (name === 'precioCompra' || name === 'precioVenta') ? 8 : 6;
-      if (value.length > maxDigits) return; // Bloquea si excede el límite
+      if (value.length > maxDigits) return; 
     }
 
     setFormData({ 
@@ -108,19 +103,16 @@ export const ProductManagement = () => {
       nombre: product.nombre, 
       precioCompra: product.precioCompra || 0,
       precioVenta: product.precioVenta || 0,
-      categoriaId: product.categoriaId || '',
-      stockActual: product.stockActual || 0,
-      stockMinimo: product.stockMinimo || 0
+      categoriaId: product.categoriaId || ''
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setFormData({ nombre: '', precioCompra: 0, precioVenta: 0, categoriaId: '', stockActual: 0, stockMinimo: 0 });
+    setFormData({ nombre: '', precioCompra: 0, precioVenta: 0, categoriaId: '' });
   };
 
-  // GUARDADO/ACTUALIZACIÓN HÍBRIDA
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -130,22 +122,28 @@ export const ProductManagement = () => {
     }
 
     setIsSubmitting(true);
+
+    const payloadToSave = {
+      ...formData,
+      stockActual: 0,
+      stockMinimo: 0
+    };
     
     try {
       if (navigator.onLine) {
         if (editingId) {
-          await streetposApi.put(`/Products/${editingId}`, formData);
+          await streetposApi.put(`/Products/${editingId}`, payloadToSave);
           showToast('Producto actualizado con éxito');
         } else {
-          await streetposApi.post('/Products', formData);
-          showToast('Producto registrado en el inventario');
+          await streetposApi.post('/Products', payloadToSave);
+          showToast('Producto registrado en el catálogo');
         }
       } else {
         const localProductToSave = {
-          ...formData,
+          ...payloadToSave,
           id: editingId || crypto.randomUUID()
         };
-        await db.products.put(localProductToSave);
+        await db.products.put(localProductToSave as any);
         showToast('Guardado localmente. Se sincronizará al tener red.', 'info');
       }
       
@@ -159,7 +157,6 @@ export const ProductManagement = () => {
     }
   };
 
-  // ELIMINACIÓN HÍBRIDA
   const confirmDelete = async () => {
     try {
       if (navigator.onLine) {
@@ -181,17 +178,16 @@ export const ProductManagement = () => {
     }
   };
 
-  const getCategoryName = (id: string) => {
-    const cat = categories.find(c => c.id === id);
+  const getCategoryName = (id?: string | null) => {
+    if (!id) return 'Sin Categoría';
+    const cat = categories.find(c => String(c.id).toLowerCase() === String(id).toLowerCase());
     return cat ? cat.nombre : 'Sin Categoría';
   };
 
-  // LÓGICA DE FILTRADO (BUSCADOR INTELIGENTE)
   const filteredProducts = products.filter(product => 
     product.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // LÓGICA DE PAGINACIÓN ACTUALIZADA
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
@@ -202,7 +198,6 @@ export const ProductManagement = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
-
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen relative">
@@ -234,7 +229,7 @@ export const ProductManagement = () => {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">¿Eliminar Producto?</h3>
               <p className="text-sm text-gray-500 px-4">
-                Estás a punto de borrar <span className="font-bold text-gray-800">{deleteModal.prodName}</span> del inventario. Esta acción no se puede deshacer.
+                Estás a punto de borrar <span className="font-bold text-gray-800">{deleteModal.prodName}</span> del catálogo.
               </p>
             </div>
             <div className="flex bg-gray-50 p-4 gap-3">
@@ -245,23 +240,18 @@ export const ProductManagement = () => {
         </div>
       )}
 
-
       <div className="max-w-7xl mx-auto">
-        
-        {/* Cabecera y Status Offline */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
           <div className="flex items-center gap-3">
-            {/* 🚨 ICONO ANTES DEL TÍTULO PRINCIPAL 🚨 */}
             <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
             </div>
             <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Inventario de Productos</h1>
-              <p className="mt-1 text-sm text-gray-500">Gestiona precios, categorías y niveles de stock de tu catálogo.</p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">Catálogo de Productos</h1>
+              <p className="mt-1 text-sm text-gray-500">Gestiona los nombres, precios y categorías de tus productos.</p>
             </div>
           </div>
           <div className="text-right w-full md:w-auto">
-            {/* INDICADOR VISUAL OFFLINE/ONLINE */}
             <span className={`px-2 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm border inline-flex ${navigator.onLine ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
               <span className={`w-2 h-2 rounded-full animate-pulse ${navigator.onLine ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
               {navigator.onLine ? 'Conectado' : 'Modo Offline'}
@@ -278,15 +268,14 @@ export const ProductManagement = () => {
                 {editingId ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                 ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
                 )}
               </div>
-              <h2 className="text-lg font-bold text-gray-800">{editingId ? 'Actualizar Producto' : 'Registrar Nuevo'}</h2>
+              <h2 className="text-lg font-bold text-gray-800">{editingId ? 'Actualizar Producto' : 'Nuevo Producto'}</h2>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-5">
               
-              {/* Nombre (CON MAXLENGTH Y CONTADOR ARRIBA) */}
               <div>
                 <div className="flex justify-between items-end mb-1.5">
                   <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">Nombre del Producto</label>
@@ -311,14 +300,19 @@ export const ProductManagement = () => {
                 </div>
               </div>
 
-              {/* Categoría */}
               <div>
                 <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Categoría</label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
                   </div>
-                  <select name="categoriaId" required value={formData.categoriaId} onChange={handleInputChange} className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all cursor-pointer appearance-none font-medium text-gray-700">
+                  <select 
+                    name="categoriaId" 
+                    required 
+                    value={formData.categoriaId} 
+                    onChange={handleInputChange} 
+                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all cursor-pointer appearance-none font-medium text-gray-700"
+                  >
                     <option value="" disabled>-- Seleccionar --</option>
                     {categories.map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.nombre}</option>
@@ -330,7 +324,6 @@ export const ProductManagement = () => {
                 </div>
               </div>
               
-              {/* Precios (CON LÍMITE DE DÍGITOS Y CONTADOR ARRIBA) */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="flex justify-between items-end mb-1.5">
@@ -378,55 +371,9 @@ export const ProductManagement = () => {
                 </div>
               </div>
 
-              {/* Inventario (CON LÍMITE DE DÍGITOS Y CONTADOR ARRIBA) */}
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-                <div>
-                  <div className="flex justify-between items-end mb-1.5">
-                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
-                      Stock Inicial
-                    </label>
-                    <span className={`text-[10px] font-bold ${String(formData.stockActual === 0 ? '' : formData.stockActual).length >= 6 ? 'text-rose-500' : 'text-gray-400'}`}>
-                      {String(formData.stockActual === 0 ? '' : formData.stockActual).length} / 6
-                    </span>
-                  </div>
-                  <input 
-                    type="number" 
-                    name="stockActual" 
-                    min="0" 
-                    required 
-                    value={formData.stockActual === 0 ? '' : formData.stockActual} 
-                    onChange={handleInputChange} 
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all font-medium" 
-                    placeholder="Ej. 50" 
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between items-end mb-1.5">
-                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1">
-                      <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                      Alerta Mínima
-                    </label>
-                    <span className={`text-[10px] font-bold ${String(formData.stockMinimo === 0 ? '' : formData.stockMinimo).length >= 6 ? 'text-rose-500' : 'text-gray-400'}`}>
-                      {String(formData.stockMinimo === 0 ? '' : formData.stockMinimo).length} / 6
-                    </span>
-                  </div>
-                  <input 
-                    type="number" 
-                    name="stockMinimo" 
-                    min="0" 
-                    required 
-                    value={formData.stockMinimo === 0 ? '' : formData.stockMinimo} 
-                    onChange={handleInputChange} 
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white transition-all font-medium" 
-                    placeholder="Ej. 10" 
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6 pt-2">
+              <div className="flex gap-3 mt-8">
                 <button type="submit" disabled={isSubmitting} className={`flex-1 py-3.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all active:scale-95 ${isSubmitting ? 'bg-gray-400 shadow-none' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'}`}>
-                  {editingId ? 'Guardar Cambios' : 'Añadir al Inventario'}
+                  {editingId ? 'Guardar Cambios' : 'Añadir al Catálogo'}
                 </button>
                 {editingId && (
                   <button type="button" onClick={cancelEdit} className="px-5 py-3.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">
@@ -440,7 +387,6 @@ export const ProductManagement = () => {
           {/* LADO DERECHO: TABLA Y PAGINACIÓN */}
           <div className="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
             
-            {/* Cabecera con Buscador Inteligente */}
             <div className="p-5 sm:p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="flex items-center gap-3">
                 <h2 className="text-lg font-bold text-gray-800">Catálogo Activo</h2>
@@ -470,14 +416,14 @@ export const ProductManagement = () => {
             
             <div className="flex-1 overflow-x-auto">
               {loading ? (
-                <div className="flex justify-center items-center py-20 text-gray-500 font-bold">Cargando inventario...</div>
+                <div className="flex justify-center items-center py-20 text-gray-500 font-bold">Cargando catálogo...</div>
               ) : filteredProducts.length === 0 ? (
                 <div className="flex flex-col justify-center items-center py-20 text-gray-400 px-4 text-center">
                   <svg className="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                   <p className="font-medium text-sm">
                     {searchTerm 
                       ? `No se encontraron productos que coincidan con "${searchTerm}"` 
-                      : 'Aún no has registrado ningún producto.'
+                      : 'Aún no has registrado ningún producto en el catálogo.'
                     }
                   </p>
                 </div>
@@ -486,14 +432,14 @@ export const ProductManagement = () => {
                   <thead className="bg-white">
                     <tr className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">
                       <th className="px-6 py-4">Producto</th>
-                      <th className="px-6 py-4 text-right">Precio</th>
-                      <th className="px-6 py-4 text-center">Stock</th>
+                      <th className="px-6 py-4 text-right">Precio Público</th>
+                      <th className="px-6 py-4 text-center">Ref. Stock</th>
                       <th className="px-6 py-4 text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {currentProducts.map(prod => {
-                      const isLowStock = prod.stockActual <= prod.stockMinimo;
+                      const stockAct = prod.stockActual || 0; 
                       return (
                         <tr key={prod.id} className="hover:bg-gray-50/80 transition-colors group">
                           <td className="px-6 py-4">
@@ -509,16 +455,26 @@ export const ProductManagement = () => {
                             <p className="text-sm font-black text-blue-600">${prod.precioVenta.toFixed(2)}</p>
                             <p className="text-xs text-gray-400 font-medium">Costo: ${prod.precioCompra.toFixed(2)}</p>
                           </td>
+                          
+                          {/* 🚨 AQUÍ ESTÁ EL AJUSTE VISUAL INTELIGENTE DEL STOCK 🚨 */}
                           <td className="px-6 py-4 text-center">
-                            <div className={`inline-flex flex-col items-center px-3 py-1.5 rounded-lg border ${isLowStock ? 'bg-rose-50 border-rose-200' : 'bg-emerald-50 border-emerald-200'}`}>
-                              <span className={`text-sm font-black ${isLowStock ? 'text-rose-700' : 'text-emerald-700'}`}>
-                                {prod.stockActual} <span className="text-[10px] font-medium opacity-70">uds</span>
+                            <div className="flex flex-col items-center gap-1">
+                              <span className={`px-3 py-1 rounded-full text-[10px] sm:text-xs font-black border flex items-center gap-1.5 
+                                ${rol === 'Admin' || rol === 'SuperAdmin'
+                                   ? 'bg-purple-50 text-purple-700 border-purple-200' 
+                                   : 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                }`}>
+                                {(rol === 'Admin' || rol === 'SuperAdmin') && (
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                                )}
+                                {stockAct} <span className="opacity-70 font-medium">uds</span>
                               </span>
-                              <span className={`text-[9px] font-bold uppercase tracking-wider ${isLowStock ? 'text-rose-500' : 'text-emerald-600'}`}>
-                                {isLowStock ? '¡Alerta!' : `Mín: ${prod.stockMinimo}`}
+                              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-tighter text-gray-400">
+                                 {rol === 'Admin' || rol === 'SuperAdmin' ? 'Stock Total' : 'En Sucursal'}
                               </span>
                             </div>
                           </td>
+
                           <td className="px-6 py-4 text-right space-x-2">
                             <button onClick={() => startEdit(prod)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors inline-flex" title="Editar">
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>

@@ -41,6 +41,15 @@ export const Layout = ({ children }: LayoutProps) => {
       ),
       allowedRoles: ['Admin'] 
     },
+    // 🚨 INTEGRACIÓN 1: SUCURSALES 🚨
+    {
+      title: 'Sucursales',
+      path: '/admin/branches',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+      ),
+      allowedRoles: ['Admin'] 
+    },
     {
       title: 'Categorías',
       path: '/admin/categories',
@@ -54,6 +63,15 @@ export const Layout = ({ children }: LayoutProps) => {
       path: '/admin/products',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+      ),
+      allowedRoles: ['Admin'] 
+    },
+    // 🚨 INTEGRACIÓN 2: INVENTARIO 🚨
+    {
+      title: 'Inventario',
+      path: '/admin/inventory',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
       ),
       allowedRoles: ['Admin'] 
     },
@@ -104,7 +122,6 @@ export const Layout = ({ children }: LayoutProps) => {
       >
         {/* Cabecera del Sidebar (Branding) */}
         <div className="h-20 flex items-center px-6 border-b border-gray-100">
-          {/* 🚨 CORRECCIÓN: LOGO MÁS GRANDE, BORDES NEÓN Y RESPLANDOR AZUL 🚨 */}
           <div className="mr-3 flex items-center justify-center w-11 h-11 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.15)] relative bg-gradient-to-br from-[#0f172a] to-[#050810] shrink-0 border border-blue-500/30">
             {/* Brillo interno suave para dar volumen */}
             <div className="absolute inset-0 bg-blue-500/20 blur-md rounded-xl pointer-events-none"></div>
