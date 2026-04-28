@@ -2,16 +2,20 @@ import { useEffect, useCallback, useState } from 'react';
 import { db } from '../db/db';
 import streetposApi from '../api/axiosConfig';
 
-export const useSync = (currentUserId: string | null | undefined) => {
+// 🚨 AHORA RECIBE EL ID Y EL TOKEN 🚨
+export const useSync = (currentUserId: string | null | undefined, token: string | null | undefined) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
   const syncCatalog = useCallback(async () => {
-    if (!navigator.onLine || !currentUserId) return;
+    if (!navigator.onLine || !currentUserId || !token) return;
     
     try {
-      const response = await streetposApi.get('/Products');
+      const response = await streetposApi.get('/Products', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
       const productsWithUser = response.data.map((p: any) => ({
         ...p,
         userId: currentUserId
@@ -23,10 +27,10 @@ export const useSync = (currentUserId: string | null | undefined) => {
     } catch (error) {
       console.error('Error al descargar el catálogo:', error);
     }
-  }, [currentUserId]);
+  }, [currentUserId, token]);
 
   const syncSales = useCallback(async () => {
-    if (!navigator.onLine || !currentUserId) return;
+    if (!navigator.onLine || !currentUserId || !token) return;
 
     try {
       const pendingSales = await db.offlineSales
@@ -40,7 +44,6 @@ export const useSync = (currentUserId: string | null | undefined) => {
       setIsSyncing(true);
       setSyncSuccess(false);
 
-      // 🚨 FIX MAESTRO: Solo celebraremos si subimos ventas reales
       let ventasExitosas = 0;
 
       for (const sale of pendingSales) {
@@ -52,23 +55,23 @@ export const useSync = (currentUserId: string | null | undefined) => {
             items: sale.items
           };
 
-          // Intentamos enviar a C#
-          await streetposApi.post('/Sales', payload);
+          // Inyectamos el token al enviar la venta
+          await streetposApi.post('/Sales', payload, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
           
-          // Solo borramos de IndexedDB si C# dice que TODO BIEN
           await db.offlineSales.delete(sale.localId);
           ventasExitosas++;
           setPendingCount(prev => prev - 1);
           
         } catch (err: any) {
-          // Si falla (por CORS o 500), NO lo borra y NO suma éxito
-          console.error(`❌ Venta retenida (${sale.localId}). Error de conexión con C#.`);
+          console.error(`❌ Venta retenida (${sale.localId}). Código:`, err.response?.status);
         }
       }
 
       setIsSyncing(false);
       
-      // 🚨 Solo dispara la animación de éxito si realmente guardó algo
+      // Solo festeja si realmente subió ventas
       if (ventasExitosas > 0) {
         setSyncSuccess(true);
         setTimeout(() => {
@@ -80,7 +83,7 @@ export const useSync = (currentUserId: string | null | undefined) => {
       console.error('Error crítico al leer la cola de ventas:', error);
       setIsSyncing(false);
     }
-  }, [currentUserId]);
+  }, [currentUserId, token]);
 
   const syncAll = useCallback(() => {
     syncCatalog();
@@ -88,14 +91,14 @@ export const useSync = (currentUserId: string | null | undefined) => {
   }, [syncCatalog, syncSales]);
 
   useEffect(() => {
-    if (currentUserId) {
+    if (currentUserId && token) {
       syncAll();
       window.addEventListener('online', syncAll);
     }
     return () => {
       window.removeEventListener('online', syncAll);
     };
-  }, [syncAll, currentUserId]);
+  }, [syncAll, currentUserId, token]);
 
   return { isSyncing, syncSuccess, pendingCount };
 };

@@ -6,8 +6,6 @@ import type { Category } from '../types/category';
 import type { CartItem, SalePayload } from '../types/sale';
 import { db } from '../db/db';
 
-// 🚨 ELIMINAMOS EL IMPORT Y EL USO DE useSync AQUÍ PARA EVITAR DUPLICADOS 🚨
-
 export const PointOfSale = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -22,7 +20,7 @@ export const PointOfSale = () => {
   const [metodoPago, setMetodoPago] = useState('Efectivo');
   const [notas, setNotas] = useState('');
 
-  const { nombre, id } = useContext(AuthContext);
+  const { nombre, id, token } = useContext(AuthContext);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; action: 'clear' | 'checkout' }>({
@@ -50,17 +48,21 @@ export const PointOfSale = () => {
       if (navigator.onLine) {
         try {
           const [prodRes, catRes] = await Promise.all([
-            streetposApi.get('/Products'),
-            streetposApi.get('/Categories')
+            streetposApi.get('/Products', { headers: { Authorization: `Bearer ${token}` } }),
+            streetposApi.get('/Categories', { headers: { Authorization: `Bearer ${token}` } })
           ]);
 
-          setProducts(prodRes.data);
+          // 🚨 VALIDACIÓN MAESTRA: Solo permitimos productos que SÍ estén asignados a la sucursal
+          const validProducts = prodRes.data.filter((p: any) => p.isAssigned === true);
+
+          setProducts(validProducts);
           
           const sortedCategories = catRes.data.sort((a: Category, b: Category) => (a.orden || 0) - (b.orden || 0));
           setCategories(sortedCategories);
 
           if (id) {
-            const productsWithUser = prodRes.data.map((p: any) => ({ ...p, userId: id }));
+            // Guardamos localmente SOLO los productos válidos, así en modo offline tampoco salen fantasmas
+            const productsWithUser = validProducts.map((p: any) => ({ ...p, userId: id }));
             await db.products.where('userId').equals(id as string).delete();
             await db.products.bulkPut(productsWithUser);
           }
@@ -173,7 +175,9 @@ export const PointOfSale = () => {
 
       if (navigator.onLine) {
         try {
-          await streetposApi.post('/Sales', payload);
+          await streetposApi.post('/Sales', payload, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
           showToast('¡Venta registrada con éxito!', 'success');
         } catch (apiError) {
           console.warn("Backend no respondió bien, guardando offline...");
@@ -312,7 +316,7 @@ export const PointOfSale = () => {
               ) : filteredProducts.length === 0 ? (
                 <div className="text-center py-10 text-gray-400 font-bold">
                   <svg className="w-16 h-16 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                  No se encontraron productos.
+                  No hay productos disponibles en esta sucursal.
                 </div>
               ) : (
                 <div className="space-y-6 sm:space-y-8">
