@@ -25,7 +25,6 @@ export const Login = () => {
   const { login } = useContext(AuthContext);
 
   useEffect(() => {
-    // Dispara la animación de entrada al cargar el componente
     setTimeout(() => setIsMounted(true), 100);
   }, []);
 
@@ -34,7 +33,6 @@ export const Login = () => {
     setError('');
     setSuccessMsg('');
 
-    // Validación del Captcha en el frontend
     if (!captchaToken) {
       setError('Por favor, verifica que no eres un robot.');
       return;
@@ -45,21 +43,18 @@ export const Login = () => {
     try {
       const response = await streetposApi.post('/Auth/login', { email, password, captchaToken });
       
-      // 1. Verificamos la bandera de seguridad
       if (response.data.requirePasswordChange === true) {
         setSuccessMsg('Por tu seguridad, debes establecer una contraseña definitiva.');
         setView('force-change');
+        setCaptchaToken(null); // 🚨 Reseteamos el token porque ya se usó
         setLoading(false);
         return; 
       }
 
-      // 🚨 FIX: Extraemos el ID del usuario (Soporta 'id' o 'userId' según lo que envíe tu C#)
       const { id, userId, token, rol, nombre } = response.data;
       const uid = id || userId; 
 
-      // 2. Si no requiere cambio, entra normal
       if (token && uid) {
-        // 🚨 Pasamos los 4 parámetros, empezando por el ID!
         login(uid, token, nombre, rol);
       } else {
         setError('El servidor no devolvió un token de acceso o ID válido.');
@@ -90,6 +85,12 @@ export const Login = () => {
       setError('La nueva contraseña debe tener al menos 6 caracteres.');
       return;
     }
+    
+    // 🚨 AHORA EXIGIMOS CAPTCHA TAMBIÉN AQUÍ
+    if (!captchaToken) {
+      setError('Por favor, verifica que no eres un robot.');
+      return;
+    }
 
     setLoading(true);
 
@@ -97,29 +98,21 @@ export const Login = () => {
       await streetposApi.post('/Auth/change-initial-password', {
         email: email,
         claveTemporal: password,
-        nuevaClave: newPassword
+        nuevaClave: newPassword,
+        captchaToken: captchaToken // Enviamos el token nuevo
       });
 
-      setSuccessMsg('¡Contraseña actualizada! Iniciando sesión...');
-      
-      // Iniciamos sesión automáticamente con la nueva clave
-      const loginRes = await streetposApi.post('/Auth/login', { 
-        email: email, 
-        password: newPassword 
-      });
-      
-      // 🚨 FIX: Extraemos y pasamos el ID también aquí
-      const { id, userId, token, rol, nombre } = loginRes.data;
-      const uid = id || userId;
-      
-      if (token && uid) {
-        login(uid, token, nombre, rol);
-      } else {
-        setError('Cambio exitoso, pero el servidor falló al iniciar sesión.');
-      }
+      // 🚨 FIX CRÍTICO: Eliminamos el auto-login para evitar el error 401 por re-uso de token
+      setSuccessMsg('¡Contraseña actualizada con éxito! Por favor inicia sesión.');
+      setView('login');
+      setPassword(''); // Limpiamos la clave vieja
+      setNewPassword('');
+      setConfirmPassword('');
+      setCaptchaToken(null); // Forzamos a que resuelvan el captcha del login
 
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cambiar la contraseña.');
+    } finally {
       setLoading(false); 
     } 
   };
@@ -128,6 +121,10 @@ export const Login = () => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
+    
+    // Opcional: Si tu endpoint forgot-password exige captcha, descomenta esto
+    // if (!captchaToken) { setError('Verifica que no eres un robot.'); return; }
+
     setLoading(true);
 
     try {
@@ -147,7 +144,6 @@ export const Login = () => {
     setPassword('');
     setNewPassword('');
     setConfirmPassword('');
-    // Reseteamos el token si cambian de vista
     setCaptchaToken(null);
   };
 
@@ -178,8 +174,8 @@ export const Login = () => {
             </h2>
             <p className="mt-2 text-sm text-gray-500 font-medium">
               {view === 'login' ? 'Ingresa a tu espacio de trabajo en StreetPOS' 
-               : view === 'forgot' ? 'Ingresa tu correo y te enviaremos las instrucciones.'
-               : 'Para continuar, debes establecer una contraseña privada.'}
+                : view === 'forgot' ? 'Ingresa tu correo y te enviaremos las instrucciones.'
+                : 'Para continuar, debes establecer una contraseña privada.'}
             </p>
           </div>
 
@@ -269,6 +265,7 @@ export const Login = () => {
                   </div>
                   <input type="email" required maxLength={100} value={email} onChange={(e) => setEmail(e.target.value)} className="block w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10 outline-none" placeholder="admin@streetpos.com" />
                 </div>
+
                 <div className="flex flex-col gap-3">
                   <button type="submit" disabled={loading} className={`w-full py-3.5 rounded-xl font-bold text-white transition-all ${loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30 active:scale-[0.98]'}`}>
                     {loading ? 'Enviando...' : 'Enviar Enlace'}
@@ -318,8 +315,20 @@ export const Login = () => {
                     placeholder="Repite tu nueva contraseña" 
                   />
                 </div>
+
+                {/* 🚨 RECAPTCHA TAMBIÉN EN ESTA VISTA 🚨 */}
+                <div className="flex justify-center w-full pt-2 pb-1">
+                  <div className="transform scale-95 sm:scale-100 origin-center transition-transform">
+                    <ReCAPTCHA
+                      sitekey="6Ldy4MUsAAAAAMcFL3FQNdKWBbhMvrk-y69O5lj4"
+                      onChange={(token) => setCaptchaToken(token)}
+                      onExpired={() => setCaptchaToken(null)}
+                    />
+                  </div>
+                </div>
+
                 <button type="submit" disabled={loading} className={`w-full py-3.5 rounded-xl font-bold text-white transition-all ${loading ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 active:scale-[0.98]'}`}>
-                  {loading ? 'Guardando...' : 'Guardar e Iniciar Sesión'}
+                  {loading ? 'Guardando...' : 'Guardar y Continuar'}
                 </button>
               </form>
             )}
