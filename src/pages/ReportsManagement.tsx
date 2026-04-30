@@ -20,6 +20,7 @@ export const ReportsManagement = () => {
 
   useEffect(() => {
     fetchDailySales(selectedDate);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -27,7 +28,7 @@ export const ReportsManagement = () => {
     setTimeout(() => setToast(null), 4000);
   };
 
-const fetchDailySales = async (date: string) => {
+  const fetchDailySales = async (date: string) => {
     try {
       setLoading(true);
       const response = await streetposApi.get(`/Sales/daily?date=${date}`);
@@ -36,8 +37,7 @@ const fetchDailySales = async (date: string) => {
       setSales(response.data || []);
       
     } catch (err: any) {
-      //Si el backend lanza un 404 (No encontrado) u otro error lógico de "lista vacía"
-      // simplemente vaciamos la tabla de ventas y evitamos asustar al usuario.
+      // Si el backend lanza un 404 (No encontrado) u otro error lógico de "lista vacía"
       if (err.response && (err.response.status === 404 || err.response.status === 400)) {
         setSales([]); 
       } else {
@@ -47,7 +47,7 @@ const fetchDailySales = async (date: string) => {
     } finally {
       setLoading(false);
     }
-    };
+  };
 
   const handleDownloadPdf = async () => {
     try {
@@ -81,16 +81,30 @@ const fetchDailySales = async (date: string) => {
   const totalTarjeta = sales.filter(s => s.metodoPago === 'Tarjeta').reduce((acc, sale) => acc + sale.total, 0);
   const totalTransferencia = sales.filter(s => s.metodoPago === 'Transferencia').reduce((acc, sale) => acc + sale.total, 0);
 
-  // 🚨 FUNCIÓN CLAVE PARA EXTRAER LA HORA PURA DEL BACKEND (SIN MODIFICACIONES LOCALES) 🚨
+  // 🚨 LA SOLUCIÓN DEFINITIVA PARA LA HORA 🚨
   const formatTimeFromServer = (fechaString: string) => {
-    // Si la fecha viene como "2026-04-25T20:30:00", esto extrae solo el "20:30"
     try {
       if (!fechaString) return "--:--";
-      const timePart = fechaString.split('T')[1]; 
-      if (timePart) {
-        return timePart.substring(0, 5); // Retorna HH:mm
+
+      // 1. Extraemos la hora exactamente como viene en el texto de C# (Ignorando al navegador)
+      // Ejemplo: "2026-04-30T02:04:50.829Z" -> Extrae "02:04"
+      if (fechaString.includes('T')) {
+        return fechaString.split('T')[1].substring(0, 5);
       }
-      return new Date(fechaString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      // Ejemplo alternativo: "2026-04-30 02:04:50" -> Extrae "02:04"
+      if (fechaString.includes(' ')) {
+        return fechaString.split(' ')[1].substring(0, 5);
+      }
+
+      // 2. Si falla lo anterior, forzamos a Javascript a NO restar horas locales
+      const date = new Date(fechaString);
+      return date.toLocaleTimeString('es-MX', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'UTC' // 🚨 ESTO BLOQUEA LA INTELIGENCIA DEL NAVEGADOR
+      });
     } catch {
       return "--:--";
     }
@@ -121,7 +135,6 @@ const fetchDailySales = async (date: string) => {
         {/* Cabecera */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
           <div className="flex items-center gap-3">
-            {/* 🚨 ICONO ANTES DEL TÍTULO PRINCIPAL 🚨 */}
             <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
             </div>
@@ -157,7 +170,6 @@ const fetchDailySales = async (date: string) => {
           {/* Desglose: Efectivo */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-12 h-12 bg-emerald-50 rounded-bl-full flex items-start justify-end p-2.5">
-              {/* 🚨 ICONO SVG EFECTIVO 🚨 */}
               <svg className="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             </div>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">En Efectivo</p>
@@ -167,7 +179,6 @@ const fetchDailySales = async (date: string) => {
           {/* Desglose: Tarjeta */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-12 h-12 bg-purple-50 rounded-bl-full flex items-start justify-end p-2.5">
-              {/* 🚨 ICONO SVG TARJETA 🚨 */}
               <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
             </div>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Por Tarjeta</p>
@@ -177,7 +188,6 @@ const fetchDailySales = async (date: string) => {
           {/* Desglose: Transferencia */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-12 h-12 bg-amber-50 rounded-bl-full flex items-start justify-end p-2.5">
-              {/* 🚨 ICONO SVG TRANSFERENCIA 🚨 */}
               <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
             </div>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Transferencias</p>
