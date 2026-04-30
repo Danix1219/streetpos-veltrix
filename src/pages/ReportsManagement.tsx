@@ -71,16 +71,23 @@ export const ReportsManagement = () => {
   const totalTarjeta = sales.filter(s => s.metodoPago === 'Tarjeta').reduce((acc, sale) => acc + sale.total, 0);
   const totalTransferencia = sales.filter(s => s.metodoPago === 'Transferencia').reduce((acc, sale) => acc + sale.total, 0);
 
-  // 🚨 FUNCIÓN CLAVE PARA EXTRAER LA HORA PURA DEL BACKEND (SIN MODIFICACIONES LOCALES) 🚨
+// 🚨 LA SOLUCIÓN DEFINITIVA: REVERSIÓN A UTC 🚨
   const formatTimeFromServer = (fechaString: string) => {
-    // Si la fecha viene como "2026-04-25T20:30:00", esto extrae solo el "20:30"
     try {
       if (!fechaString) return "--:--";
-      const timePart = fechaString.split('T')[1]; 
-      if (timePart) {
-        return timePart.substring(0, 5); // Retorna HH:mm
-      }
-      return new Date(fechaString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      // Tomamos el string exacto de C# (ej: "2026-04-29T22:04:50.829296-04:00")
+      const date = new Date(fechaString);
+      
+      // Le pedimos a Javascript que deshaga el desfase horario del servidor de EE.UU.
+      // y nos devuelva exactamente la hora en formato UTC (que es tu 02:04)
+      return date.toLocaleTimeString('es-MX', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'UTC' // 🚨 ESTA ES LA MAGIA QUE RECUPERA EL 02:04
+      });
+      
     } catch {
       return "--:--";
     }
@@ -226,7 +233,7 @@ export const ReportsManagement = () => {
                           #{folioCorto}
                         </td>
                         <td className="px-6 py-4 text-sm font-bold text-gray-900">
-                          {horaExacta} hrs
+                          {horaExacta}
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className={`px-3 py-1 rounded-lg text-[10px] font-black tracking-wider uppercase border
