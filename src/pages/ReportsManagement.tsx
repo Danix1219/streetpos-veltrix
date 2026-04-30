@@ -20,6 +20,7 @@ export const ReportsManagement = () => {
 
   useEffect(() => {
     fetchDailySales(selectedDate);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -31,9 +32,19 @@ export const ReportsManagement = () => {
     try {
       setLoading(true);
       const response = await streetposApi.get(`/Sales/daily?date=${date}`);
-      setSales(response.data);
+      
+      // Si el backend responde con éxito, guardamos los datos (sea un array lleno o vacío)
+      setSales(response.data || []);
+      
     } catch (err: any) {
-      showToast('Error al cargar el reporte de ventas.', 'error');
+      // 🚨 FIX: Si el backend lanza un 404 (No encontrado) u otro error lógico de "lista vacía"
+      // simplemente vaciamos la tabla de ventas y evitamos asustar al usuario.
+      if (err.response && (err.response.status === 404 || err.response.status === 400)) {
+        setSales([]); 
+      } else {
+        // Solo mostramos el error si de verdad el servidor falló (ej. Error 500 o sin internet)
+        showToast('Error de conexión al cargar el reporte.', 'error');
+      }
     } finally {
       setLoading(false);
     }
@@ -111,7 +122,6 @@ export const ReportsManagement = () => {
         {/* Cabecera */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
           <div className="flex items-center gap-3">
-            {/* 🚨 ICONO ANTES DEL TÍTULO PRINCIPAL 🚨 */}
             <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
             </div>
@@ -147,7 +157,6 @@ export const ReportsManagement = () => {
           {/* Desglose: Efectivo */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-12 h-12 bg-emerald-50 rounded-bl-full flex items-start justify-end p-2.5">
-              {/* 🚨 ICONO SVG EFECTIVO 🚨 */}
               <svg className="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             </div>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">En Efectivo</p>
@@ -157,7 +166,6 @@ export const ReportsManagement = () => {
           {/* Desglose: Tarjeta */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-12 h-12 bg-purple-50 rounded-bl-full flex items-start justify-end p-2.5">
-              {/* 🚨 ICONO SVG TARJETA 🚨 */}
               <svg className="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
             </div>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Por Tarjeta</p>
@@ -167,7 +175,6 @@ export const ReportsManagement = () => {
           {/* Desglose: Transferencia */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-12 h-12 bg-amber-50 rounded-bl-full flex items-start justify-end p-2.5">
-              {/* 🚨 ICONO SVG TRANSFERENCIA 🚨 */}
               <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" /></svg>
             </div>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Transferencias</p>
