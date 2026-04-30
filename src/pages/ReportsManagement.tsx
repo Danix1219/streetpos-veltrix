@@ -27,27 +27,17 @@ export const ReportsManagement = () => {
     setTimeout(() => setToast(null), 4000);
   };
 
-const fetchDailySales = async (date: string) => {
+  const fetchDailySales = async (date: string) => {
     try {
       setLoading(true);
       const response = await streetposApi.get(`/Sales/daily?date=${date}`);
-      
-      // Si el backend responde con éxito, guardamos los datos (sea un array lleno o vacío)
-      setSales(response.data || []);
-      
+      setSales(response.data);
     } catch (err: any) {
-      //Si el backend lanza un 404 (No encontrado) u otro error lógico de "lista vacía"
-      // simplemente vaciamos la tabla de ventas y evitamos asustar al usuario.
-      if (err.response && (err.response.status === 404 || err.response.status === 400)) {
-        setSales([]); 
-      } else {
-        // Solo mostramos el error si de verdad el servidor falló (ej. Error 500 o sin internet)
-        showToast('Error de conexión al cargar el reporte.', 'error');
-      }
+      showToast('Error al cargar el reporte de ventas.', 'error');
     } finally {
       setLoading(false);
     }
-    };
+  };
 
   const handleDownloadPdf = async () => {
     try {
