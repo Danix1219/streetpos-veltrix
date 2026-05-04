@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 
 // Páginas
+import { LandingPage } from './pages/LandingPage'; // 🚨 IMPORTAMOS LA LANDING PAGE 🚨
 import { Login } from './pages/Login';
 import { StaffManagement } from './pages/StaffManagement';
 import { CategoryManagement } from './pages/CategoryManagement';
@@ -12,8 +13,6 @@ import { PointOfSale } from './pages/PointOfSale';
 import { ResetPassword } from './pages/ResetPassword';
 import { VerifyEmail } from './pages/VerifyEmail';
 import { ReportsManagement } from './pages/ReportsManagement';
-
-// 🚨 NUEVAS PÁGINAS IMPORTADAS 🚨
 import { BranchManagement } from './pages/BranchManagement';
 import { InventoryManagement } from './pages/InventoryManagement';
 
@@ -44,11 +43,12 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* LA RAÍZ: Si tiene token, lo manda a su panel. Si no, lo manda a /login. */}
-      <Route path="/" element={<Navigate to={token ? redirectPath : "/login"} replace />} />
+      {/* 🚨 LA RAÍZ AHORA MUESTRA LA LANDING PAGE 🚨
+          Si tiene token, lo manda a su panel. Si no, muestra la LandingPage. */}
+      <Route path="/" element={token ? <Navigate to={redirectPath} replace /> : <LandingPage />} />
 
-      {/* LOGIN: Si ya tiene token, NO DEBE ESTAR AQUÍ, lo mandamos a su panel. 
-        Si no tiene token, se renderiza <Login /> (SIN NINGÚN REDIRECT)
+      {/* LOGIN: Si ya tiene token, lo mandamos a su panel. 
+        Si no tiene token, se renderiza <Login />
       */}
       <Route path="/login" element={token ? <Navigate to={redirectPath} replace /> : <Login />} />
 
@@ -83,14 +83,12 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
-      {/* 🚨 NUEVA RUTA: GESTIÓN DE SUCURSALES 🚨 */}
       <Route path="/admin/branches" element={
         <ProtectedRoute allowedRoles={['Admin']}>
           <Layout><BranchManagement /></Layout>
         </ProtectedRoute>
       } />
 
-      {/* 🚨 NUEVA RUTA: GESTIÓN DE INVENTARIO 🚨 */}
       <Route path="/admin/inventory" element={
         <ProtectedRoute allowedRoles={['Admin']}>
           <Layout><InventoryManagement /></Layout>
