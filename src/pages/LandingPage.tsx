@@ -61,7 +61,7 @@ export const LandingPage = () => {
             <div className="w-10 h-10 bg-[#0a0f1c] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 border border-white/10 p-1.5 overflow-hidden">
               <img src="/streetpos-icon.png" alt="StreetPOS" className="w-full h-full object-contain" />
             </div>
-            <span className="text-xl font-black tracking-tight text-white">StreetPOS.</span>
+            <span className="text-xl font-black tracking-tight text-white">StreetPOS</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-gray-300">
             <a href="#solucion" className="hover:text-white transition-colors">Solución</a>
