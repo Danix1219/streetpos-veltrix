@@ -51,12 +51,22 @@ export const LandingPage = () => {
   return (
     <div className="min-h-screen bg-[#050810] font-sans text-gray-100 overflow-hidden selection:bg-blue-500/30 scroll-smooth">
       
+      {/* 🚨 SOLUCIÓN PARA TEXTO GRANDE EN APP DESCARGADA 🚨 */}
+      <style>{`
+        @media (display-mode: standalone) {
+          html {
+            -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+          }
+        }
+      `}</style>
+
       {/* ==========================================
           NAVBAR
       ========================================== */}
       <nav className="fixed top-0 w-full z-50 bg-[#050810]/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+  <div className="flex items-center gap-3">
             {/* 🚨 LOGO REAL INTEGRADO 🚨 */}
             <div className="w-10 h-10 bg-[#0a0f1c] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 border border-white/10 p-1.5 overflow-hidden">
               <img src="/streetpos-icon.png" alt="StreetPOS" className="w-full h-full object-contain" />
@@ -68,11 +78,14 @@ export const LandingPage = () => {
             <a href="#caracteristicas" className="hover:text-white transition-colors">Características</a>
             <a href="#demo" className="hover:text-white transition-colors">Demo</a>
           </div>
-          <div className="flex items-center gap-4">
-            <a href="/login" className="hidden sm:block text-sm font-bold text-gray-300 hover:text-white transition-colors">
+          {/* Se ajustó el gap de gap-4 a gap-2 para móviles pequeños */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* 🚨 SE ELIMINÓ 'hidden sm:block' PARA QUE APAREZCA EN RESPONSIVE 🚨 */}
+            {/* Se ajustó padding y tamaño de texto responsive para asegurar que quepa */}
+            <a href="/login" className="text-xs sm:text-sm font-bold text-gray-300 hover:text-white transition-colors whitespace-nowrap px-2 py-1">
               Iniciar Sesión
             </a>
-            <a href={whatsappLink} target="_blank" rel="noreferrer" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] active:scale-95">
+            <a href={whatsappLink} target="_blank" rel="noreferrer" className="px-3 py-2 sm:px-5 sm:py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] active:scale-95 whitespace-nowrap">
               Probar Ahora
             </a>
           </div>
@@ -80,7 +93,7 @@ export const LandingPage = () => {
       </nav>
 
       {/* ==========================================
-          HERO SECTION (AURORA + RUSTY)
+          HERO SECTION (AURORA + RUSTY) -> SIN CAMBIOS AQUÍ
       ========================================== */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 px-6">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-[500px] pointer-events-none">
@@ -294,8 +307,8 @@ export const LandingPage = () => {
         </div>
         <div className="space-y-4">
           {[
-            { q: "¿Necesito instalar algo en mi computadora?", a: "No. StreetPOS es 100% en la nube (SaaS). Solo necesitas un navegador web y conexión a internet para operar desde cualquier PC, tablet o celular." },
-            { q: "¿Puedo manejar varias sucursales con una sola cuenta?", a: "¡Sí! StreetPOS es multi-sucursal. Puedes ver el inventario y las ventas de todas tus tiendas desde un panel central de Administrador." },
+            { q: "¿Necesito instalar algo en mi computadora?", a: "No. StreetPOS is 100% en la nube (SaaS). Solo necesitas un navegador web y conexión a internet para operar desde cualquier PC, tablet o celular." },
+            { q: "¿Puedo manejar varias sucursales con una sola cuenta?", a: "¡Sí! StreetPOS is multi-sucursal. Puedes ver el inventario y las ventas de todas tus tiendas desde un panel central de Administrador." },
             { q: "¿Qué pasa si un empleado intenta borrar una venta?", a: "El sistema cuenta con Roles. Un 'Cajero' solo puede cobrar. Las modificaciones, cortes y reportes están protegidos para el rol de 'Administrador'." },
             { q: "¿Cómo funcionan los cortes de caja?", a: "El sistema registra cada ticket con su hora exacta y método de pago. Al final del día, puedes generar un PDF detallado que cuadra los ingresos con un solo clic." }
           ].map((faq, i) => (
