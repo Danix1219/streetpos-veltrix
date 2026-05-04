@@ -51,13 +51,12 @@ export const LandingPage = () => {
   return (
     <div className="min-h-screen bg-[#050810] font-sans text-gray-100 overflow-hidden selection:bg-blue-500/30 scroll-smooth">
       
-      {/* 🚨 SOLUCIÓN PARA TEXTO GRANDE EN APP DESCARGADA 🚨 */}
+      {/* 🚨 SOLUCIÓN ESTRICTA PARA EVITAR QUE EL TEXTO CREZCA EN APP DESCARGADA (PWA) 🚨 */}
       <style>{`
-        @media (display-mode: standalone) {
-          html {
-            -webkit-text-size-adjust: 100%;
-            text-size-adjust: 100%;
-          }
+        html, body {
+          -moz-text-size-adjust: none !important;
+          -webkit-text-size-adjust: none !important;
+          text-size-adjust: none !important;
         }
       `}</style>
 
@@ -66,7 +65,7 @@ export const LandingPage = () => {
       ========================================== */}
       <nav className="fixed top-0 w-full z-50 bg-[#050810]/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-  <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             {/* 🚨 LOGO REAL INTEGRADO 🚨 */}
             <div className="w-10 h-10 bg-[#0a0f1c] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 border border-white/10 p-1.5 overflow-hidden">
               <img src="/streetpos-icon.png" alt="StreetPOS" className="w-full h-full object-contain" />
@@ -93,7 +92,7 @@ export const LandingPage = () => {
       </nav>
 
       {/* ==========================================
-          HERO SECTION (AURORA + RUSTY) -> SIN CAMBIOS AQUÍ
+          HERO SECTION (AURORA + RUSTY)
       ========================================== */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 px-6">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-[500px] pointer-events-none">
@@ -134,7 +133,8 @@ export const LandingPage = () => {
           >
             <motion.div animate={{ y: [0, -20, 0] }} transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }} className="relative z-20">
               
-              <div className="absolute top-10 -left-12 lg:-left-24 bg-[#0a0f1c]/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl flex items-center gap-4 z-30">
+              {/* 🚨 GLOBO IZQUIERDO: SE ESCALÓ A 75% Y SE EMPUJÓ HACIA AFUERA SOLO EN MÓVIL (-left-8, -top-4) 🚨 */}
+              <div className="absolute -top-4 -left-8 sm:top-10 sm:-left-12 lg:-left-24 bg-[#0a0f1c]/80 backdrop-blur-xl border border-white/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xl flex items-center gap-3 sm:gap-4 z-30 scale-75 sm:scale-100 origin-top-left">
                 <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
                   <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
                 </div>
@@ -144,7 +144,8 @@ export const LandingPage = () => {
                 </div>
               </div>
 
-              <div className="absolute bottom-20 -right-8 lg:-right-16 bg-[#0a0f1c]/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl flex items-center gap-4 z-30">
+              {/* 🚨 GLOBO DERECHO: SE ESCALÓ A 75% Y SE EMPUJÓ HACIA AFUERA SOLO EN MÓVIL (-right-8, bottom-4) 🚨 */}
+              <div className="absolute bottom-4 -right-8 sm:bottom-20 sm:-right-8 lg:-right-16 bg-[#0a0f1c]/80 backdrop-blur-xl border border-white/10 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-2xl flex items-center gap-3 sm:gap-4 z-30 scale-75 sm:scale-100 origin-bottom-right">
                 <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
                   <BarChart3 className="text-blue-400 w-5 h-5" />
                 </div>
@@ -154,10 +155,11 @@ export const LandingPage = () => {
                 </div>
               </div>
 
+              {/* 🚨 RUSTY: SE REDUJO SU TAMAÑO SOLO EN MÓVILES (w-[240px]) PARA HACER ESPACIO A LOS GLOBOS 🚨 */}
               <img 
                 src="/Rusty.png" 
                 alt="Rusty StreetPOS" 
-                className="w-[350px] lg:w-[450px] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+                className="w-[240px] sm:w-[350px] lg:w-[450px] object-contain drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative z-20"
               />
             </motion.div>
             
@@ -307,8 +309,8 @@ export const LandingPage = () => {
         </div>
         <div className="space-y-4">
           {[
-            { q: "¿Necesito instalar algo en mi computadora?", a: "No. StreetPOS is 100% en la nube (SaaS). Solo necesitas un navegador web y conexión a internet para operar desde cualquier PC, tablet o celular." },
-            { q: "¿Puedo manejar varias sucursales con una sola cuenta?", a: "¡Sí! StreetPOS is multi-sucursal. Puedes ver el inventario y las ventas de todas tus tiendas desde un panel central de Administrador." },
+            { q: "¿Necesito instalar algo en mi computadora?", a: "No. StreetPOS es 100% en la nube (SaaS). Solo necesitas un navegador web y conexión a internet para operar desde cualquier PC, tablet o celular." },
+            { q: "¿Puedo manejar varias sucursales con una sola cuenta?", a: "¡Sí! StreetPOS es multi-sucursal. Puedes ver el inventario y las ventas de todas tus tiendas desde un panel central de Administrador." },
             { q: "¿Qué pasa si un empleado intenta borrar una venta?", a: "El sistema cuenta con Roles. Un 'Cajero' solo puede cobrar. Las modificaciones, cortes y reportes están protegidos para el rol de 'Administrador'." },
             { q: "¿Cómo funcionan los cortes de caja?", a: "El sistema registra cada ticket con su hora exacta y método de pago. Al final del día, puedes generar un PDF detallado que cuadra los ingresos con un solo clic." }
           ].map((faq, i) => (
